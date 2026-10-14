@@ -146,7 +146,7 @@ namespace RushArena.Multiplayer
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(15, 15, 390, 330), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(15, 15, 410, 410), GUI.skin.box);
             var titleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
@@ -192,9 +192,21 @@ namespace RushArena.Multiplayer
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Look Sensitivity: {RushArena.Runtime.GameSettings.MouseSensitivity:0.0}x", GUILayout.Width(180));
-            float newSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.MouseSensitivity, 0.2f, 3.5f);
-            if (Mathf.Abs(newSens - RushArena.Runtime.GameSettings.MouseSensitivity) > 0.02f) RushArena.Runtime.GameSettings.MouseSensitivity = newSens;
+            GUILayout.Label($"Move Speed Sens: {RushArena.Runtime.GameSettings.MovementSensitivity:0.0}x", GUILayout.Width(170));
+            float newMoveSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.MovementSensitivity, 0.4f, 2.0f);
+            if (Mathf.Abs(newMoveSens - RushArena.Runtime.GameSettings.MovementSensitivity) > 0.02f) RushArena.Runtime.GameSettings.MovementSensitivity = newMoveSens;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Firearm Look Sens: {RushArena.Runtime.GameSettings.FirearmSensitivity:0.0}x", GUILayout.Width(170));
+            float newSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.FirearmSensitivity, 0.2f, 3.5f);
+            if (Mathf.Abs(newSens - RushArena.Runtime.GameSettings.FirearmSensitivity) > 0.02f) RushArena.Runtime.GameSettings.FirearmSensitivity = newSens;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"ADS Scope Sens: {RushArena.Runtime.GameSettings.AdsSensitivity:0.0}x", GUILayout.Width(170));
+            float newAdsSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.AdsSensitivity, 0.1f, 2.0f);
+            if (Mathf.Abs(newAdsSens - RushArena.Runtime.GameSettings.AdsSensitivity) > 0.02f) RushArena.Runtime.GameSettings.AdsSensitivity = newAdsSens;
             GUILayout.EndHorizontal();
 
             GUILayout.Space(8);

@@ -10,6 +10,24 @@ namespace RushArena.Runtime
             set { PlayerPrefs.SetFloat("Rush_Sensitivity", Mathf.Clamp(value, 0.2f, 3.5f)); PlayerPrefs.Save(); }
         }
 
+        public static float FirearmSensitivity
+        {
+            get => MouseSensitivity;
+            set => MouseSensitivity = value;
+        }
+
+        public static float MovementSensitivity
+        {
+            get => PlayerPrefs.GetFloat("Rush_MoveSensitivity", 1.0f);
+            set { PlayerPrefs.SetFloat("Rush_MoveSensitivity", Mathf.Clamp(value, 0.4f, 2.0f)); PlayerPrefs.Save(); }
+        }
+
+        public static float AdsSensitivity
+        {
+            get => PlayerPrefs.GetFloat("Rush_AdsSensitivity", 0.55f);
+            set { PlayerPrefs.SetFloat("Rush_AdsSensitivity", Mathf.Clamp(value, 0.1f, 2.0f)); PlayerPrefs.Save(); }
+        }
+
         public static float FieldOfView
         {
             get => PlayerPrefs.GetFloat("Rush_FOV", 85f);

@@ -341,7 +341,7 @@ namespace RushArena.Multiplayer
                             WeaponType.AssaultRifle => 0.14f,
                             WeaponType.PlasmaCannon => 0.48f,
                             WeaponType.Scattergun => 0.65f,
-                            WeaponType.SniperRifle => 1.25f,
+                            WeaponType.SniperRifle => 1.45f,
                             WeaponType.MachineGun => 0.09f,
                             _ => 0.15f
                         };
@@ -444,8 +444,25 @@ namespace RushArena.Multiplayer
             {
                 tracer.SetPosition(0, eyePos + transform.forward * 0.4f);
                 tracer.SetPosition(1, endPoint);
+                if (weapon == WeaponType.SniperRifle)
+                {
+                    tracer.startWidth = 0.085f;
+                    tracer.endWidth = 0.035f;
+                    tracerUntil = Time.unscaledTime + 0.35f;
+                }
+                else if (weapon == WeaponType.PlasmaCannon)
+                {
+                    tracer.startWidth = 0.055f;
+                    tracer.endWidth = 0.025f;
+                    tracerUntil = Time.unscaledTime + 0.12f;
+                }
+                else
+                {
+                    tracer.startWidth = 0.024f;
+                    tracer.endWidth = 0.008f;
+                    tracerUntil = Time.unscaledTime + 0.07f;
+                }
                 tracer.enabled = true;
-                tracerUntil = Time.unscaledTime + 0.05f;
             }
         }
 

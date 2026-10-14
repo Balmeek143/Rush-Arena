@@ -127,6 +127,18 @@ namespace RushArena.Multiplayer
         // Sniper Scoping state
         public bool IsScoped { get; private set; }
         private bool wasScopedLastFrame;
+        private float boltActionAt;
+        public float SniperCycleProgress
+        {
+            get
+            {
+                if (CurrentWeapon != WeaponType.SniperRifle) return 1f;
+                if (Time.time >= nextShotAt) return 1f;
+                float totalDelay = HasRapidFire ? 0.95f : 1.35f;
+                float remaining = nextShotAt - Time.time;
+                return Mathf.Clamp01(1f - (remaining / totalDelay));
+            }
+        }
 
         // Tactical Reload Animation State
         public bool IsReloading { get; private set; }
@@ -408,6 +420,13 @@ namespace RushArena.Multiplayer
                     activeWeapon.transform.localRotation = Quaternion.Euler(weaponRecoilRot + reloadRotOffset);
                 }
 
+                // Trigger scheduled bolt-action cycling sound for Sniper Rifle
+                if (boltActionAt > 0f && Time.time >= boltActionAt)
+                {
+                    boltActionAt = 0f;
+                    if (audioSource != null) ProceduralAudio.PlayBoltAction(audioSource);
+                }
+
                 // Turn off muzzle flash light after duration
                 if (Time.unscaledTime >= muzzleFlashUntil)
                 {
@@ -470,7 +489,7 @@ namespace RushArena.Multiplayer
             }
 
             // Look rotation with precision sensitivity scaling when scoped
-            float sensMultiplier = IsScoped ? 0.38f : 1.0f;
+            float sensMultiplier = IsScoped ? GameSettings.AdsSensitivity : 1.0f;
             kcc.AddLookRotation(new Vector2(-command.LookY * sensMultiplier, command.LookX * sensMultiplier));
             Vector2 look = kcc.GetLookRotation(true, false);
             AimPitch = look.x;
@@ -517,9 +536,10 @@ namespace RushArena.Multiplayer
                 CoyoteLeft = JumpBufferLeft = 0f;
             }
 
-            // Speed boost power-up
-            float currentSprintSpeed = HasSpeedBoost ? sprintSpeed * 1.35f : sprintSpeed;
-            float currentWalkSpeed = HasSpeedBoost ? walkSpeed * 1.35f : walkSpeed;
+            // Speed boost power-up & Movement Sensitivity scaling
+            float moveSens = GameSettings.MovementSensitivity;
+            float currentSprintSpeed = (HasSpeedBoost ? sprintSpeed * 1.35f : sprintSpeed) * moveSens;
+            float currentWalkSpeed = (HasSpeedBoost ? walkSpeed * 1.35f : walkSpeed) * moveSens;
 
             Vector2 axes = Vector2.ClampMagnitude(new Vector2(command.MoveX, command.MoveY), 1f);
             Vector3 desired = kcc.TransformRotation * new Vector3(axes.x, 0f, axes.y)
@@ -668,11 +688,16 @@ namespace RushArena.Multiplayer
                 WeaponType.AssaultRifle => (rapid ? 0.07f : 0.13f),
                 WeaponType.PlasmaCannon => (rapid ? 0.25f : 0.50f),
                 WeaponType.Scattergun => 0.70f,
-                WeaponType.SniperRifle => 1.15f,
+                WeaponType.SniperRifle => (rapid ? 0.95f : 1.35f),
                 WeaponType.MachineGun => (rapid ? 0.055f : 0.085f),
                 _ => 0.15f
             };
             nextShotAt = Time.time + fireInterval;
+
+            if (CurrentWeapon == WeaponType.SniperRifle)
+            {
+                boltActionAt = Time.time + 0.42f;
+            }
 
             // Recoil kickback per weapon
             if (CurrentWeapon == WeaponType.SniperRifle)
@@ -743,11 +768,14 @@ namespace RushArena.Multiplayer
                     if (p == 0 && tracer != null)
                     {
                         Transform muzzle = GetActiveMuzzle();
-                        Vector3 startPos = muzzle != null ? muzzle.position : origin + forward * 0.4f;
+                        Vector3 startPos = (muzzle != null && muzzle.gameObject.activeInHierarchy) ? muzzle.position : (origin + forward * 0.4f);
+                        tracer.startWidth = 0.024f;
+                        tracer.endWidth = 0.008f;
+                        if (laserTracerMaterial != null) tracer.sharedMaterial = laserTracerMaterial;
                         tracer.SetPosition(0, startPos);
                         tracer.SetPosition(1, pelletEnd);
                         tracer.enabled = true;
-                        tracerUntil = Time.unscaledTime + 0.05f;
+                        tracerUntil = Time.unscaledTime + 0.07f;
                     }
                 }
                 if (anyHit) ProceduralAudio.PlayHitMarker();
@@ -769,12 +797,48 @@ namespace RushArena.Multiplayer
                 if (hitCombatant) ProceduralAudio.PlayHitMarker();
 
                 // Tracer line
-                Transform muzzle = GetActiveMuzzle();
-                Vector3 startPos = muzzle != null ? muzzle.position : origin + forward * 0.4f;
-                tracer.SetPosition(0, startPos);
-                tracer.SetPosition(1, endPoint);
-                tracer.enabled = true;
-                tracerUntil = Time.unscaledTime + 0.05f;
+                if (tracer != null)
+                {
+                    Vector3 startPos;
+                    if (CurrentWeapon == WeaponType.SniperRifle)
+                    {
+                        if (IsScoped)
+                        {
+                            startPos = origin + forward * 0.45f - ownerCamera.transform.up * 0.06f + ownerCamera.transform.right * 0.07f;
+                        }
+                        else
+                        {
+                            Transform muzzle = GetActiveMuzzle();
+                            startPos = (muzzle != null && muzzle.gameObject.activeInHierarchy) ? muzzle.position : (origin + forward * 0.45f - ownerCamera.transform.up * 0.08f + ownerCamera.transform.right * 0.12f);
+                        }
+                        tracer.startWidth = 0.085f;
+                        tracer.endWidth = 0.035f;
+                        tracerUntil = Time.unscaledTime + 0.35f;
+                        if (laserTracerMaterial != null) tracer.sharedMaterial = laserTracerMaterial;
+                    }
+                    else
+                    {
+                        Transform muzzle = GetActiveMuzzle();
+                        startPos = (muzzle != null && muzzle.gameObject.activeInHierarchy) ? muzzle.position : (origin + forward * 0.4f);
+                        if (CurrentWeapon == WeaponType.PlasmaCannon)
+                        {
+                            tracer.startWidth = 0.055f;
+                            tracer.endWidth = 0.025f;
+                            tracerUntil = Time.unscaledTime + 0.12f;
+                            if (plasmaTracerMaterial != null) tracer.sharedMaterial = plasmaTracerMaterial;
+                        }
+                        else
+                        {
+                            tracer.startWidth = 0.024f;
+                            tracer.endWidth = 0.008f;
+                            tracerUntil = Time.unscaledTime + 0.07f;
+                            if (laserTracerMaterial != null) tracer.sharedMaterial = laserTracerMaterial;
+                        }
+                    }
+                    tracer.SetPosition(0, startPos);
+                    tracer.SetPosition(1, endPoint);
+                    tracer.enabled = true;
+                }
 
                 if (combatHud != null) combatHud.PulseShot(hitCombatant);
             }

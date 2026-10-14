@@ -83,6 +83,7 @@ namespace RushArena.Multiplayer
             }
 
             DrawReloadIndicator();
+            DrawSniperCycleIndicator();
             DrawPlayerStatus();
             DrawWeaponStatus();
             DrawMatchHeader();
@@ -213,6 +214,33 @@ namespace RushArena.Multiplayer
                 normal = { textColor = new Color(1f, 0.85f, 0.3f) }
             };
             GUI.Label(new Rect(rect.x, rect.y + 2f, w, 18f), $"RELOADING... {Mathf.RoundToInt(p * 100f)}%", labelStyle);
+        }
+
+        private void DrawSniperCycleIndicator()
+        {
+            if (avatar == null || avatar.IsReloading || avatar.CurrentWeapon != WeaponType.SniperRifle) return;
+            float p = avatar.SniperCycleProgress;
+            if (p >= 1f) return;
+
+            float w = 180f;
+            float h = 30f;
+            var rect = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height * 0.5f + 24f, w, h);
+
+            // Dark tactical background pill
+            DrawFilledRect(rect, new Color(0.04f, 0.08f, 0.12f, 0.90f));
+            DrawOutlineRect(rect, new Color(0.2f, 0.85f, 1f, 0.8f), 1);
+
+            // Progress fill bar
+            DrawFilledRect(new Rect(rect.x + 4f, rect.y + 20f, (w - 8f) * p, 5f), new Color(0.2f, 0.85f, 1f));
+
+            var labelStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(0.4f, 0.9f, 1f) }
+            };
+            GUI.Label(new Rect(rect.x, rect.y + 2f, w, 16f), $"⟲ RECHAMBERING... {Mathf.RoundToInt(p * 100f)}%", labelStyle);
         }
 
         private void DrawPlayerStatus()
@@ -407,8 +435,8 @@ namespace RushArena.Multiplayer
 
         private void DrawSettingsModal()
         {
-            float w = 460f;
-            float h = 420f;
+            float w = 490f;
+            float h = 480f;
             var rect = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height * 0.5f - h * 0.5f, w, h);
 
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
@@ -429,13 +457,27 @@ namespace RushArena.Multiplayer
                 normal = { textColor = Color.cyan }
             };
             GUILayout.Label("GAMEPLAY SETTINGS", titleStyle);
-            GUILayout.Space(10);
+            GUILayout.Space(8);
 
-            // Mouse Sensitivity
+            // Movement Sensitivity
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Mouse Sensitivity: {GameSettings.MouseSensitivity:0.0}x", GUILayout.Width(180));
-            float newSens = GUILayout.HorizontalSlider(GameSettings.MouseSensitivity, 0.2f, 3.5f);
-            if (Mathf.Abs(newSens - GameSettings.MouseSensitivity) > 0.02f) GameSettings.MouseSensitivity = newSens;
+            GUILayout.Label($"Movement Sensitivity: {GameSettings.MovementSensitivity:0.0}x", GUILayout.Width(190));
+            float newMoveSens = GUILayout.HorizontalSlider(GameSettings.MovementSensitivity, 0.4f, 2.0f);
+            if (Mathf.Abs(newMoveSens - GameSettings.MovementSensitivity) > 0.02f) GameSettings.MovementSensitivity = newMoveSens;
+            GUILayout.EndHorizontal();
+
+            // Firearm / Hipfire Sensitivity
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Firearm Sensitivity: {GameSettings.FirearmSensitivity:0.0}x", GUILayout.Width(190));
+            float newSens = GUILayout.HorizontalSlider(GameSettings.FirearmSensitivity, 0.2f, 3.5f);
+            if (Mathf.Abs(newSens - GameSettings.FirearmSensitivity) > 0.02f) GameSettings.FirearmSensitivity = newSens;
+            GUILayout.EndHorizontal();
+
+            // ADS / Scoped Sensitivity
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"ADS Scope Sensitivity: {GameSettings.AdsSensitivity:0.0}x", GUILayout.Width(190));
+            float newAdsSens = GUILayout.HorizontalSlider(GameSettings.AdsSensitivity, 0.1f, 2.0f);
+            if (Mathf.Abs(newAdsSens - GameSettings.AdsSensitivity) > 0.02f) GameSettings.AdsSensitivity = newAdsSens;
             GUILayout.EndHorizontal();
 
             // Field of View

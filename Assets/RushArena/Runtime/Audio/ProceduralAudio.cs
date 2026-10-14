@@ -16,6 +16,7 @@ namespace RushArena.Runtime.Audio
         private static AudioClip jumpPadClip;
         private static AudioClip powerupClip;
         private static AudioClip damageClip;
+        private static AudioClip boltActionClip;
         private static AudioSource globalSource;
 
         private static AudioSource GetGlobalSource()
@@ -81,6 +82,12 @@ namespace RushArena.Runtime.Audio
         {
             if (sniperZoomClip == null) sniperZoomClip = CreateSniperZoomClip();
             Play(source != null ? source : GetGlobalSource(), sniperZoomClip, 0.7f, 1f);
+        }
+
+        public static void PlayBoltAction(AudioSource source = null)
+        {
+            if (boltActionClip == null) boltActionClip = CreateBoltActionClip();
+            Play(source != null ? source : GetGlobalSource(), boltActionClip, 0.9f, Random.Range(0.98f, 1.02f));
         }
 
         public static void PlayWeaponDepleted(AudioSource source = null)
@@ -415,6 +422,31 @@ namespace RushArena.Runtime.Audio
                 data[i] = Mathf.Clamp(tone * envelope, -1f, 1f);
             }
             var clip = AudioClip.Create("PowerupDismiss", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateBoltActionClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.42f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                // Stage 1: Bolt handle flip up & unlock (t ~ 0.04s)
+                float click1 = Mathf.Exp(-Mathf.Abs(t - 0.04f) * 140f) * Mathf.Sin(2f * Mathf.PI * 1550f * t);
+                // Stage 2: Slide pull back & brass casing eject (t ~ 0.12s to 0.22s)
+                float slideBack = (t > 0.06f && t < 0.22f) ? (Random.value * 2f - 1f) * 0.18f : 0f;
+                float brassClink = Mathf.Exp(-Mathf.Abs(t - 0.16f) * 110f) * Mathf.Sin(2f * Mathf.PI * 2300f * t) * 0.45f;
+                // Stage 3: Slide push forward & solid breech lock (t ~ 0.28s to 0.36s)
+                float slideFwd = (t > 0.24f && t < 0.34f) ? (Random.value * 2f - 1f) * 0.15f : 0f;
+                float lockDown = Mathf.Exp(-Mathf.Abs(t - 0.33f) * 120f) * (Mathf.Sin(2f * Mathf.PI * 920f * t) * 0.75f + (Random.value * 2f - 1f) * 0.3f);
+
+                data[i] = Mathf.Clamp(click1 * 0.8f + slideBack + brassClink + slideFwd + lockDown * 0.9f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("BoltActionCycle", samples, 1, sampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

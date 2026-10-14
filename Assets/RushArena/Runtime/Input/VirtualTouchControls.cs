@@ -150,7 +150,7 @@ namespace RushArena.Input
                             else
                             {
                                 Vector2 delta = screenPos - lastLookPos;
-                                float lookSens = GameSettings.MouseSensitivity * 0.12f;
+                                float lookSens = GameSettings.FirearmSensitivity * 0.12f;
                                 lookDeltaAccumulator.x += delta.x * lookSens;
                                 lookDeltaAccumulator.y += (GameSettings.InvertY ? delta.y : -delta.y) * lookSens;
                                 lastLookPos = screenPos;
@@ -194,7 +194,7 @@ namespace RushArena.Input
                     if (!sawLook)
                     {
                         Vector2 delta = mouse.delta.ReadValue();
-                        float lookSens = GameSettings.MouseSensitivity * 0.12f;
+                        float lookSens = GameSettings.FirearmSensitivity * 0.12f;
                         lookDeltaAccumulator.x += delta.x * lookSens;
                         lookDeltaAccumulator.y += (GameSettings.InvertY ? -delta.y : delta.y) * lookSens;
                         sawLook = true;

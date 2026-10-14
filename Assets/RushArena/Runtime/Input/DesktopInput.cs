@@ -91,7 +91,7 @@ namespace RushArena.Input
                     delta.y = Mathf.Clamp(delta.y, -45f, 45f);
                 }
 
-                float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.MouseSensitivity;
+                float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.FirearmSensitivity;
                 command.LookX += delta.x * sens;
                 command.LookY += delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
                 command.Fire = command.Fire || (mouse.leftButton.isPressed && Time.unscaledTime >= SuppressFireUntil);
