@@ -45,3 +45,17 @@ The project structure/meta GUID check passed, the verification PowerShell script
 ## Next gate
 
 The user has authorized M2 foundation work with physical mobile testing still deferred. Keep the pending interactive PC checklist and sustained performance check open; choose representative Android hardware when the user is ready. Open Unity Hub before command-line checks if licensing needs refresh. Photon account sign-in must occur in its secure provider UI.
+
+## Overtown Arena & Combat Mechanics Verification — 2026-10-15
+
+- `dotnet run --project Tools/CoreChecks`: **15/15 passed**. All pure movement invariants validated (diagonal speed cap, sprint max, stop latency, coyote window, jump buffer, no double jump, ceiling check, terminal fall, yaw rotation, pitch clamp, frame rate agreement).
+- `Tools/Verify-Unity.ps1`: **Passed**. 16 EditMode tests passed, 5 PlayMode tests passed. Exit code 0.
+- `Tools/Build-Cloudflare.ps1`: **Passed**. WebGL build completed successfully with Gzip compression and decompression fallback (`WebGLCloudflare.data.unityweb`: 5.89 MB, `WebGLCloudflare.wasm.unityweb`: 11.2 MB).
+- Cloudflare Pages Deploy: **Passed**. Deployed via Wrangler to production: `https://rush-arena.pages.dev/`.
+- Features verified:
+  1. Sunlit modular town arena ("Overtown") with warm sunlight, stucco walls, terracotta trim, shipping container yards, town hall with sniper balcony, warehouse with roof vantage, and central plaza fountain.
+  2. 1-Click invite link system with native JS bridge, `?room=XYZ` URL query reading, and in-game clipboard copy button.
+  3. Tactical ground slide (sprint + crouch/slide with camera eye dip to 0.85m, impulse boost, low friction, and slide-hop).
+  4. True weapon viewmodel iron-sights ADS (weapon smoothly centers on screen and zooms FOV on right-click for rifles/pistols/smgs).
+  5. Headshot hitbox detection ($y \ge 1.45\text{m}$) with $2.0\times$ crit damage and crisp metallic "DING" audio.
+  6. Floating 3D combat damage text (`-24`, `★ -96 HEADSHOT!`) and centered elimination accolade medals (`+100 ENEMY ELIMINATED`, `+50 HEADSHOT`).

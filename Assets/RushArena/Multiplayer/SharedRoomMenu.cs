@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Fusion;
+using RushArena.Runtime;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -9,6 +10,7 @@ namespace RushArena.Multiplayer
     // Small developer room UI. Public/private matchmaking belongs to a later slice.
     public sealed class SharedRoomMenu : MonoBehaviour
     {
+        public static string ActiveRoomName { get; private set; } = "rush-dev-room";
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private GameObject matchManagerPrefab;
         [SerializeField] private string roomName = "rush-dev-room";
@@ -26,6 +28,15 @@ namespace RushArena.Multiplayer
             RapidFirePowerup.Create(new Vector3(-8f, 1.2f, 2f));
             RapidFirePowerup.Create(new Vector3(8f, 1.2f, 2f));
             RapidFirePowerup.Create(new Vector3(0f, 1.2f, 14f));
+
+            // Check URL query parameter ?room=XYZ for 1-click invite link joining
+            string urlRoom = WebBridge.GetRoomQueryParam();
+            if (!string.IsNullOrEmpty(urlRoom))
+            {
+                roomName = urlRoom;
+                status = $"Invited to room '{roomName}'!";
+            }
+
             string[] args = Environment.GetCommandLineArgs();
             smokeMode = Array.IndexOf(args, "-rush-shared-smoke") >= 0;
             if (!smokeMode) return;
@@ -89,6 +100,7 @@ namespace RushArena.Multiplayer
             {
                 status = "Room name must be 3–32 characters."; return;
             }
+            ActiveRoomName = roomName;
             if (playerPrefab == null) { status = "Player prefab missing."; return; }
             var playerNetworkObject = playerPrefab.GetComponent<NetworkObject>();
             if (playerNetworkObject == null) { status = "Player NetworkObject missing."; return; }
@@ -146,7 +158,7 @@ namespace RushArena.Multiplayer
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(15, 15, 410, 410), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(15, 15, 410, 460), GUI.skin.box);
             var titleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
@@ -158,6 +170,12 @@ namespace RushArena.Multiplayer
 
             GUILayout.Label("Room Name:");
             roomName = GUILayout.TextField(roomName, 32);
+
+            if (GUILayout.Button("📋 COPY 1-CLICK INVITE LINK", GUILayout.Height(28)))
+            {
+                string link = WebBridge.CopyInviteLink(roomName);
+                status = "✓ Invite link copied to clipboard!";
+            }
 
             GUILayout.Space(6);
             GUILayout.BeginHorizontal();
@@ -210,7 +228,7 @@ namespace RushArena.Multiplayer
             GUILayout.EndHorizontal();
 
             GUILayout.Space(8);
-            if (GUILayout.Button("ENTER SCI-FI ARENA", GUILayout.Height(38))) Join();
+            if (GUILayout.Button("ENTER OVERTOWN ARENA", GUILayout.Height(38))) Join();
 
             GUILayout.Space(4);
             GUILayout.Label(status);

@@ -15,6 +15,7 @@ namespace RushArena.Input
         private static bool jumpQueued;
         private static bool reloadQueued;
         private static bool switchQueued;
+        private static bool slideQueued;
         private static Vector2 lookDeltaAccumulator;
 
         // Joystick configuration
@@ -49,6 +50,13 @@ namespace RushArena.Input
             return s;
         }
 
+        public static bool ConsumeSlide()
+        {
+            bool s = slideQueued;
+            slideQueued = false;
+            return s;
+        }
+
         public static Vector2 ConsumeLook()
         {
             Vector2 l = lookDeltaAccumulator;
@@ -64,6 +72,7 @@ namespace RushArena.Input
             jumpQueued = false;
             reloadQueued = false;
             switchQueued = false;
+            slideQueued = false;
             lookDeltaAccumulator = Vector2.zero;
             isStickActive = false;
             stickFingerId = -1;
@@ -87,6 +96,7 @@ namespace RushArena.Input
             Rect jumpRectScreen = new Rect(Screen.width - 135f, 275f, 110f, 65f);
             Rect reloadRectScreen = new Rect(Screen.width - 250f, 150f, 95f, 60f);
             Rect switchRectScreen = new Rect(Screen.width - 250f, 220f, 95f, 60f);
+            Rect slideRectScreen = new Rect(Screen.width - 250f, 290f, 95f, 60f);
             Rect moveZoneScreen = new Rect(15f, 60f, 200f, 220f);
 
             bool sawStick = false;
@@ -110,6 +120,7 @@ namespace RushArena.Input
                         if (jumpRectScreen.Contains(screenPos)) jumpQueued = true;
                         else if (reloadRectScreen.Contains(screenPos)) reloadQueued = true;
                         else if (switchRectScreen.Contains(screenPos)) switchQueued = true;
+                        else if (slideRectScreen.Contains(screenPos)) slideQueued = true;
                     }
 
                     // Fire button
@@ -140,7 +151,7 @@ namespace RushArena.Input
                     // Look / Aim zone (right or upper screen not on buttons)
                     if (id != stickFingerId && id != fireFingerId)
                     {
-                        if (screenPos.x > Screen.width * 0.32f && screenPos.y > 100f && !fireRectScreen.Contains(screenPos) && !jumpRectScreen.Contains(screenPos) && !reloadRectScreen.Contains(screenPos) && !switchRectScreen.Contains(screenPos))
+                        if (screenPos.x > Screen.width * 0.32f && screenPos.y > 100f && !fireRectScreen.Contains(screenPos) && !jumpRectScreen.Contains(screenPos) && !reloadRectScreen.Contains(screenPos) && !switchRectScreen.Contains(screenPos) && !slideRectScreen.Contains(screenPos))
                         {
                             if (lookFingerId != id)
                             {
@@ -172,6 +183,7 @@ namespace RushArena.Input
                     if (jumpRectScreen.Contains(mouseScreen)) jumpQueued = true;
                     else if (reloadRectScreen.Contains(mouseScreen)) reloadQueued = true;
                     else if (switchRectScreen.Contains(mouseScreen)) switchQueued = true;
+                    else if (slideRectScreen.Contains(mouseScreen)) slideQueued = true;
                 }
 
                 if (fireRectScreen.Contains(mouseScreen))
@@ -275,7 +287,12 @@ namespace RushArena.Input
             DrawPill(switchRect, new Color(0.45f, 0.15f, 0.65f, 0.8f), new Color(0.85f, 0.4f, 1f, 0.9f), 2);
             GUI.Label(new Rect(switchRect.x, switchRect.y + 16f, switchRect.width, 28f), "⚡ GUN ⟳", SmallButtonLabel(Color.white));
 
-            // 6. Look / Aim drag indicator (Subtle hint at top-right)
+            // 6. SLIDE Button
+            Rect slideRect = new Rect(Screen.width - 250f, Screen.height - 350f, 95f, 60f);
+            DrawPill(slideRect, new Color(0.12f, 0.50f, 0.42f, 0.8f), new Color(0.2f, 0.95f, 0.75f, 0.9f), 2);
+            GUI.Label(new Rect(slideRect.x, slideRect.y + 16f, slideRect.width, 28f), "⚡ SLIDE", SmallButtonLabel(Color.white));
+
+            // 7. Look / Aim drag indicator (Subtle hint at top-right)
             GUI.Label(new Rect(Screen.width - 240f, 55f, 220f, 24f), "[ Touch & Drag screen to Aim ]", SubtleHintLabel());
         }
 

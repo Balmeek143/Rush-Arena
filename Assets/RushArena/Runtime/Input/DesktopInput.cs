@@ -52,6 +52,7 @@ namespace RushArena.Input
                     command.SwitchWeapon = true;
                     command.WeaponScroll = 1;
                 }
+                if (VirtualTouchControls.ConsumeSlide()) command.SlidePressed = true;
                 Vector2 touchLook = VirtualTouchControls.ConsumeLook();
                 command.LookX += touchLook.x;
                 command.LookY += touchLook.y;
@@ -67,6 +68,7 @@ namespace RushArena.Input
                     command.MoveY = keyY;
                 }
                 if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed) command.Sprint = true;
+                if (keyboard.cKey.wasPressedThisFrame || keyboard.leftCtrlKey.wasPressedThisFrame) command.SlidePressed = true;
                 if (keyboard.spaceKey.wasPressedThisFrame) command.JumpPressed = true;
                 if (keyboard.rKey.wasPressedThisFrame) command.ReloadPressed = true;
                 if (keyboard.qKey.wasPressedThisFrame)

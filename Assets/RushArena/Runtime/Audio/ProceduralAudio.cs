@@ -17,6 +17,8 @@ namespace RushArena.Runtime.Audio
         private static AudioClip powerupClip;
         private static AudioClip damageClip;
         private static AudioClip boltActionClip;
+        private static AudioClip slideClip;
+        private static AudioClip headshotClip;
         private static AudioSource globalSource;
 
         private static AudioSource GetGlobalSource()
@@ -112,6 +114,18 @@ namespace RushArena.Runtime.Audio
         {
             if (hitMarkerClip == null) hitMarkerClip = CreateHitMarkerClip();
             Play(GetGlobalSource(), hitMarkerClip, 0.9f, 1f);
+        }
+
+        public static void PlayHeadshotDing()
+        {
+            if (headshotClip == null) headshotClip = CreateHeadshotClip();
+            Play(GetGlobalSource(), headshotClip, 1.0f, 1f);
+        }
+
+        public static void PlaySlide(AudioSource source = null)
+        {
+            if (slideClip == null) slideClip = CreateSlideClip();
+            Play(source != null ? source : GetGlobalSource(), slideClip, 0.85f, Random.Range(0.96f, 1.04f));
         }
 
         public static void PlayJumpPad(AudioSource source = null)
@@ -447,6 +461,46 @@ namespace RushArena.Runtime.Audio
                 data[i] = Mathf.Clamp(click1 * 0.8f + slideBack + brassClink + slideFwd + lockDown * 0.9f, -1f, 1f);
             }
             var clip = AudioClip.Create("BoltActionCycle", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateSlideClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.35f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float env = Mathf.Exp(-t * 9f);
+                float scrape = (Random.value * 2f - 1f) * 0.45f;
+                float whoosh = Mathf.Sin(2f * Mathf.PI * (110f - t * 140f) * t) * 0.35f;
+                data[i] = Mathf.Clamp((scrape + whoosh) * env, -1f, 1f);
+            }
+            var clip = AudioClip.Create("CombatSlide", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateHeadshotClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.32f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float env = Mathf.Exp(-t * 14f);
+                // Sharp metallic bell ping: 2200 Hz + 4400 Hz harmonic + initial strike click
+                float p1 = Mathf.Sin(2f * Mathf.PI * 2200f * t) * 0.7f;
+                float p2 = Mathf.Sin(2f * Mathf.PI * 4400f * t) * 0.3f;
+                float click = Mathf.Exp(-t * 180f) * 0.5f;
+                data[i] = Mathf.Clamp((p1 + p2 + click) * env, -1f, 1f);
+            }
+            var clip = AudioClip.Create("HeadshotDing", samples, 1, sampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

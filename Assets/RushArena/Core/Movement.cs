@@ -25,6 +25,7 @@ namespace RushArena.Core
         public int WeaponScroll;
         public bool ReloadPressed;
         public bool ZoomPressed;
+        public bool SlidePressed;
     }
 
     public readonly struct MotionDelta

@@ -19,6 +19,26 @@ namespace RushArena.Multiplayer
         private bool showScoreboard;
         private bool showSettings;
 
+        // Floating combat damage popups
+        public struct DamagePopup
+        {
+            public Vector3 worldPos;
+            public int damage;
+            public bool isHeadshot;
+            public float spawnTime;
+        }
+        private readonly System.Collections.Generic.List<DamagePopup> damagePopups = new System.Collections.Generic.List<DamagePopup>();
+
+        // Elimination accolade banner state
+        private string accoladeTitle = string.Empty;
+        private string accoladeBonus = string.Empty;
+        private int accoladePoints = 0;
+        private float accoladeUntil;
+
+        // Settings link feedback
+        private string copyLinkFeedback = string.Empty;
+        private float copyLinkFeedbackUntil;
+
         // Pickup banner state
         private string pickupBannerText = string.Empty;
         private float pickupBannerUntil;
@@ -39,6 +59,26 @@ namespace RushArena.Multiplayer
         {
             pickupBannerText = text;
             pickupBannerUntil = Time.time + 2.4f;
+        }
+
+        public void SpawnDamagePopup(Vector3 worldPos, int damage, bool isHeadshot)
+        {
+            damagePopups.Add(new DamagePopup
+            {
+                worldPos = worldPos + UnityEngine.Random.insideUnitSphere * 0.12f,
+                damage = damage,
+                isHeadshot = isHeadshot,
+                spawnTime = Time.time
+            });
+            if (damagePopups.Count > 24) damagePopups.RemoveAt(0);
+        }
+
+        public void TriggerAccolade(string title, int points, string bonus = null)
+        {
+            accoladeTitle = title;
+            accoladePoints = points;
+            accoladeBonus = bonus;
+            accoladeUntil = Time.time + 2.4f;
         }
 
         private void Update()
@@ -90,6 +130,8 @@ namespace RushArena.Multiplayer
             DrawKillFeed();
             DrawPowerupIndicator();
             DrawPickupBanner();
+            DrawDamagePopups();
+            DrawAccoladeBanner();
 
             // Settings button in top-left
             if (GUI.Button(new Rect(15f, 15f, 110f, 32f), showSettings ? "✕ CLOSE" : "⚙ SETTINGS"))
@@ -546,6 +588,19 @@ namespace RushArena.Multiplayer
             GUI.backgroundColor = curBg;
             GUILayout.EndHorizontal();
 
+            // 1-Click Shareable Invite Link
+            GUILayout.Space(8);
+            if (GUILayout.Button("📋 COPY 1-CLICK INVITE LINK", GUILayout.Height(30)))
+            {
+                WebBridge.CopyInviteLink(SharedRoomMenu.ActiveRoomName);
+                copyLinkFeedback = "✓ INVITE LINK COPIED TO CLIPBOARD!";
+                copyLinkFeedbackUntil = Time.unscaledTime + 3.0f;
+            }
+            if (Time.unscaledTime < copyLinkFeedbackUntil && !string.IsNullOrEmpty(copyLinkFeedback))
+            {
+                GUILayout.Label(copyLinkFeedback, BoldLabel(new Color(0.2f, 1.0f, 0.4f), TextAnchor.MiddleCenter));
+            }
+
             GUILayout.Space(12);
             if (GUILayout.Button("RESUME MATCH", GUILayout.Height(36)))
             {
@@ -565,6 +620,91 @@ namespace RushArena.Multiplayer
             }
 
             GUILayout.EndArea();
+        }
+
+        private void DrawDamagePopups()
+        {
+            if (damagePopups.Count == 0) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            float curTime = Time.time;
+            for (int i = damagePopups.Count - 1; i >= 0; i--)
+            {
+                var pop = damagePopups[i];
+                float elapsed = curTime - pop.spawnTime;
+                if (elapsed > 0.85f)
+                {
+                    damagePopups.RemoveAt(i);
+                    continue;
+                }
+
+                // Float upward in world space
+                Vector3 currentWorldPos = pop.worldPos + Vector3.up * (elapsed * 0.9f);
+                Vector3 screenPos = cam.WorldToScreenPoint(currentWorldPos);
+
+                // Discard points behind camera
+                if (screenPos.z <= 0.1f) continue;
+
+                // GUI Y is inverted
+                float guiX = screenPos.x;
+                float guiY = Screen.height - screenPos.y;
+
+                float alpha = Mathf.Clamp01(1f - (elapsed / 0.85f));
+                Color col = pop.isHeadshot
+                    ? new Color(1.0f, 0.85f, 0.15f, alpha)
+                    : new Color(0.95f, 0.95f, 0.95f, alpha);
+
+                string text = pop.isHeadshot ? $"★ -{pop.damage} HEADSHOT!" : $"-{pop.damage}";
+                var style = new GUIStyle(GUI.skin.label)
+                {
+                    fontStyle = FontStyle.Bold,
+                    fontSize = pop.isHeadshot ? 18 : 14,
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = col }
+                };
+
+                // Shadow / outline effect for high legibility against bright backgrounds
+                Color shadowCol = new Color(0f, 0f, 0f, alpha * 0.85f);
+                var shadowStyle = new GUIStyle(style) { normal = { textColor = shadowCol } };
+                GUI.Label(new Rect(guiX - 100f + 1f, guiY - 14f + 1f, 200f, 30f), text, shadowStyle);
+                GUI.Label(new Rect(guiX - 100f, guiY - 14f, 200f, 30f), text, style);
+            }
+        }
+
+        private void DrawAccoladeBanner()
+        {
+            if (Time.time >= accoladeUntil || string.IsNullOrEmpty(accoladeTitle)) return;
+
+            float remaining = accoladeUntil - Time.time;
+            float alpha = Mathf.Clamp01(remaining * 2.0f);
+            float w = 380f;
+            float h = string.IsNullOrEmpty(accoladeBonus) ? 62f : 86f;
+            var rect = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height * 0.28f, w, h);
+
+            DrawFilledRect(rect, new Color(0.04f, 0.07f, 0.14f, 0.92f * alpha));
+            DrawOutlineRect(rect, new Color(1.0f, 0.82f, 0.18f, 0.95f * alpha), 2);
+
+            var titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 17,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(1f, 0.85f, 0.2f, alpha) }
+            };
+            GUI.Label(new Rect(rect.x, rect.y + 10f, rect.width, 24f), $"★ {accoladeTitle} (+{accoladePoints})", titleStyle);
+
+            if (!string.IsNullOrEmpty(accoladeBonus))
+            {
+                var bonusStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontStyle = FontStyle.Bold,
+                    fontSize = 14,
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = new Color(0.2f, 1.0f, 0.5f, alpha) }
+                };
+                GUI.Label(new Rect(rect.x, rect.y + 38f, rect.width, 22f), $"🎯 {accoladeBonus}", bonusStyle);
+            }
         }
 
         private void AdjustBotsToTarget(int targetCount)

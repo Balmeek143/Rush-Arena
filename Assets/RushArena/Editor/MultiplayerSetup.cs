@@ -44,6 +44,16 @@ namespace RushArena.Editor
             var matWall = AssetDatabase.LoadAssetAtPath<Material>(MaterialFolder + "ArenaWall.mat");
             var matAccent = AssetDatabase.LoadAssetAtPath<Material>(MaterialFolder + "ArenaAccent.mat");
 
+            // Overtide-style Sunlit Modular Town Materials
+            var matPavement = GetOrCreateMaterial("TownPavement", new Color(0.74f, 0.72f, 0.68f), 0.15f);
+            var matStucco = GetOrCreateMaterial("TownStucco", new Color(0.88f, 0.86f, 0.80f), 0.10f);
+            var matTerracotta = GetOrCreateMaterial("TownTerracotta", new Color(0.80f, 0.38f, 0.22f), 0.25f);
+            var matContainerRed = GetOrCreateMaterial("ContainerRed", new Color(0.82f, 0.20f, 0.16f), 0.35f);
+            var matContainerBlue = GetOrCreateMaterial("ContainerBlue", new Color(0.18f, 0.44f, 0.78f), 0.35f);
+            var matContainerYellow = GetOrCreateMaterial("ContainerYellow", new Color(0.92f, 0.74f, 0.18f), 0.35f);
+            var matWood = GetOrCreateMaterial("TownWood", new Color(0.55f, 0.40f, 0.25f), 0.10f);
+            var matWater = GetOrCreateMaterial("TownWater", new Color(0.20f, 0.65f, 0.85f), 0.90f);
+
             // Match Manager Prefab
             var matchManagerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MatchManagerPrefabPath);
             if (matchManagerPrefab == null)
@@ -100,66 +110,91 @@ namespace RushArena.Editor
             // Create ArenaShared scene
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            // Lighting
+            // Vibrant Daylight Sun Lighting
             var sun = new GameObject("Directional Light").AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.intensity = 1.25f;
+            sun.intensity = 1.35f;
+            sun.color = new Color(1.0f, 0.96f, 0.88f);
             sun.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-            RenderSettings.ambientLight = new Color(0.6f, 0.65f, 0.75f);
+            sun.transform.rotation = Quaternion.Euler(52f, -38f, 0f);
+            RenderSettings.ambientLight = new Color(0.72f, 0.78f, 0.88f);
 
-            // Sci-Fi Arena Construction
-            var arenaRoot = new GameObject("SciFi_Arena");
+            // Overtown Modular Arena Construction (62m x 62m)
+            var arenaRoot = new GameObject("Overtown_Arena");
 
-            // Main Floor: 54m x 54m (top surface at y = 0)
-            BuildBlock(arenaRoot.transform, "Floor", new Vector3(0f, -0.5f, 0f), new Vector3(54f, 1f, 54f), matFloor);
-            // Thick safety subfloor (prevents any possible physics tunneling)
-            BuildBlock(arenaRoot.transform, "Subfloor_Safety", new Vector3(0f, -2.5f, 0f), new Vector3(100f, 3f, 100f), matFloor);
+            // Main Cobblestone Floor (top surface at y = 0)
+            BuildBlock(arenaRoot.transform, "Town_Cobblestone_Floor", new Vector3(0f, -0.5f, 0f), new Vector3(64f, 1f, 64f), matPavement);
+            // Thick safety subfloor (prevents physics tunneling)
+            BuildBlock(arenaRoot.transform, "Subfloor_Safety", new Vector3(0f, -2.5f, 0f), new Vector3(110f, 3f, 110f), matPavement);
 
-            // Perimeter Walls: 4.5m high
-            BuildBlock(arenaRoot.transform, "Wall_North", new Vector3(0f, 2.25f, 27f), new Vector3(55f, 4.5f, 1f), matWall);
-            BuildBlock(arenaRoot.transform, "Wall_South", new Vector3(0f, 2.25f, -27f), new Vector3(55f, 4.5f, 1f), matWall);
-            BuildBlock(arenaRoot.transform, "Wall_East", new Vector3(27f, 2.25f, 0f), new Vector3(1f, 4.5f, 54f), matWall);
-            BuildBlock(arenaRoot.transform, "Wall_West", new Vector3(-27f, 2.25f, 0f), new Vector3(1f, 4.5f, 54f), matWall);
+            // Perimeter Stucco Walls: 5m high
+            BuildBlock(arenaRoot.transform, "Wall_North", new Vector3(0f, 2.5f, 32f), new Vector3(65f, 5.0f, 1.2f), matStucco);
+            BuildBlock(arenaRoot.transform, "Wall_South", new Vector3(0f, 2.5f, -32f), new Vector3(65f, 5.0f, 1.2f), matStucco);
+            BuildBlock(arenaRoot.transform, "Wall_East", new Vector3(32f, 2.5f, 0f), new Vector3(1.2f, 5.0f, 65f), matStucco);
+            BuildBlock(arenaRoot.transform, "Wall_West", new Vector3(-32f, 2.5f, 0f), new Vector3(1.2f, 5.0f, 65f), matStucco);
 
-            // Glowing border trim
-            BuildBlock(arenaRoot.transform, "Trim_North", new Vector3(0f, 4.55f, 27f), new Vector3(55f, 0.2f, 1.2f), matAccent);
-            BuildBlock(arenaRoot.transform, "Trim_South", new Vector3(0f, 4.55f, -27f), new Vector3(55f, 0.2f, 1.2f), matAccent);
-            BuildBlock(arenaRoot.transform, "Trim_East", new Vector3(27f, 4.55f, 0f), new Vector3(1.2f, 0.2f, 54f), matAccent);
-            BuildBlock(arenaRoot.transform, "Trim_West", new Vector3(-27f, 4.55f, 0f), new Vector3(1.2f, 0.2f, 54f), matAccent);
+            // Terracotta coping border trim
+            BuildBlock(arenaRoot.transform, "Trim_North", new Vector3(0f, 5.1f, 32f), new Vector3(65f, 0.25f, 1.5f), matTerracotta);
+            BuildBlock(arenaRoot.transform, "Trim_South", new Vector3(0f, 5.1f, -32f), new Vector3(65f, 0.25f, 1.5f), matTerracotta);
+            BuildBlock(arenaRoot.transform, "Trim_East", new Vector3(32f, 5.1f, 0f), new Vector3(1.5f, 0.25f, 65f), matTerracotta);
+            BuildBlock(arenaRoot.transform, "Trim_West", new Vector3(-32f, 5.1f, 0f), new Vector3(1.5f, 0.25f, 65f), matTerracotta);
 
-            // Central Elevated Combat Platform (14m x 14m at 3.5m height)
-            BuildBlock(arenaRoot.transform, "Central_Platform", new Vector3(0f, 1.75f, 0f), new Vector3(14f, 3.5f, 14f), matFloor);
-            BuildBlock(arenaRoot.transform, "Central_Trim", new Vector3(0f, 3.55f, 0f), new Vector3(14.4f, 0.1f, 14.4f), matAccent);
-            BuildBlock(arenaRoot.transform, "Central_Cover_1", new Vector3(-2.5f, 4.2f, 0f), new Vector3(0.6f, 1.4f, 4.5f), matWall);
-            BuildBlock(arenaRoot.transform, "Central_Cover_2", new Vector3(2.5f, 4.2f, 0f), new Vector3(0.6f, 1.4f, 4.5f), matWall);
+            // --- NORTH: 2-Story Town Hall with Walkthrough Arch & Sniper Balcony ---
+            // Ground floor building wings
+            BuildBlock(arenaRoot.transform, "TownHall_WestWing", new Vector3(-6f, 2.0f, 21f), new Vector3(8f, 4.0f, 8f), matStucco);
+            BuildBlock(arenaRoot.transform, "TownHall_EastWing", new Vector3(6f, 2.0f, 21f), new Vector3(8f, 4.0f, 8f), matStucco);
+            BuildBlock(arenaRoot.transform, "TownHall_ArchLintel", new Vector3(0f, 3.6f, 21f), new Vector3(4.5f, 0.8f, 8f), matStucco);
+            // 2nd Floor Sniper Balcony / Terrace at y = 4.1m
+            BuildBlock(arenaRoot.transform, "TownHall_BalconyDeck", new Vector3(0f, 4.1f, 18.5f), new Vector3(16f, 0.25f, 5.0f), matPavement);
+            BuildBlock(arenaRoot.transform, "TownHall_BalconyParapet", new Vector3(0f, 4.7f, 16.1f), new Vector3(16f, 0.95f, 0.4f), matTerracotta);
+            BuildBlock(arenaRoot.transform, "TownHall_BackWall", new Vector3(0f, 5.5f, 25f), new Vector3(16f, 3.0f, 0.8f), matStucco);
+            // Balcony access ramps
+            BuildBlock(arenaRoot.transform, "TownHall_WestRamp", new Vector3(-11.5f, 2.05f, 19f), new Vector3(2.8f, 0.35f, 10f), matPavement, 24f);
+            BuildBlock(arenaRoot.transform, "TownHall_EastRamp", new Vector3(11.5f, 2.05f, 19f), new Vector3(2.8f, 0.35f, 10f), matPavement, 24f);
 
-            // Catwalks & Access Ramps
-            BuildBlock(arenaRoot.transform, "Ramp_North", new Vector3(0f, 1.75f, 11f), new Vector3(4f, 0.4f, 8.5f), matFloor, -24f);
-            BuildBlock(arenaRoot.transform, "Ramp_South", new Vector3(0f, 1.75f, -11f), new Vector3(4f, 0.4f, 8.5f), matFloor, 24f);
+            // --- SOUTH: Warehouse / Cargo Depot with Roof Vantage Deck ---
+            BuildBlock(arenaRoot.transform, "Warehouse_WestBay", new Vector3(-5.5f, 1.8f, -21f), new Vector3(7f, 3.6f, 8f), matStucco);
+            BuildBlock(arenaRoot.transform, "Warehouse_EastBay", new Vector3(5.5f, 1.8f, -21f), new Vector3(7f, 3.6f, 8f), matStucco);
+            BuildBlock(arenaRoot.transform, "Warehouse_RoofDeck", new Vector3(0f, 3.7f, -21f), new Vector3(16f, 0.25f, 8.5f), matPavement);
+            BuildBlock(arenaRoot.transform, "Warehouse_RoofParapet", new Vector3(0f, 4.25f, -16.8f), new Vector3(16f, 0.9f, 0.4f), matTerracotta);
+            BuildBlock(arenaRoot.transform, "Warehouse_Ramp", new Vector3(9.5f, 1.85f, -21f), new Vector3(2.8f, 0.35f, 9f), matPavement, -24f);
 
-            // Tactical Barriers across the ground floor
-            for (int i = -1; i <= 1; i += 2)
-            {
-                BuildBlock(arenaRoot.transform, $"Cover_East_{i}", new Vector3(i * 14f, 0.9f, 8f), new Vector3(3f, 1.8f, 0.8f), matWall);
-                BuildBlock(arenaRoot.transform, $"Cover_West_{i}", new Vector3(i * 14f, 0.9f, -8f), new Vector3(3f, 1.8f, 0.8f), matWall);
-            }
+            // --- EAST: Stacked Shipping Container Parkour Yard ---
+            BuildBlock(arenaRoot.transform, "Container_East_Red", new Vector3(18f, 1.3f, 6f), new Vector3(6.5f, 2.6f, 2.6f), matContainerRed);
+            BuildBlock(arenaRoot.transform, "Container_East_Blue", new Vector3(18f, 1.3f, -6f), new Vector3(6.5f, 2.6f, 2.6f), matContainerBlue);
+            BuildBlock(arenaRoot.transform, "Container_East_TopYellow", new Vector3(18f, 3.9f, 0f), new Vector3(6.5f, 2.6f, 2.6f), matContainerYellow);
+            BuildBlock(arenaRoot.transform, "Container_East_Catwalk", new Vector3(18f, 2.65f, 0f), new Vector3(2.8f, 0.2f, 6.0f), matTerracotta);
 
-            // Interactive Jump Pads (Launch players to high ground!)
-            JumpPad.Create(new Vector3(-16f, 0.1f, 16f), Quaternion.Euler(0f, 135f, 0f), matJumpPad);
-            JumpPad.Create(new Vector3(16f, 0.1f, 16f), Quaternion.Euler(0f, -135f, 0f), matJumpPad);
-            JumpPad.Create(new Vector3(-16f, 0.1f, -16f), Quaternion.Euler(0f, 45f, 0f), matJumpPad);
-            JumpPad.Create(new Vector3(16f, 0.1f, -16f), Quaternion.Euler(0f, -45f, 0f), matJumpPad);
+            // --- WEST: Storage Yard & Alleys ---
+            BuildBlock(arenaRoot.transform, "Container_West_Blue", new Vector3(-18f, 1.3f, 6f), new Vector3(6.5f, 2.6f, 2.6f), matContainerBlue);
+            BuildBlock(arenaRoot.transform, "Container_West_Red", new Vector3(-18f, 1.3f, -6f), new Vector3(6.5f, 2.6f, 2.6f), matContainerRed);
+            BuildBlock(arenaRoot.transform, "Container_West_TopYellow", new Vector3(-18f, 3.9f, 0f), new Vector3(6.5f, 2.6f, 2.6f), matContainerYellow);
+            BuildBlock(arenaRoot.transform, "Crates_West_Yard", new Vector3(-13f, 0.9f, 0f), new Vector3(2.4f, 1.8f, 3.8f), matWood);
 
-            // Tactical Weapon Drops and Powerup Spawners across the Arena
-            ArenaPowerup.Create(new Vector3(0f, 4.2f, 0f), PowerupType.WeaponSniperRifle, matRifle, matVisor);
-            ArenaPowerup.Create(new Vector3(0f, 0.8f, 18f), PowerupType.WeaponAssaultRifle, matRifle, matAccent);
-            ArenaPowerup.Create(new Vector3(0f, 0.8f, -18f), PowerupType.WeaponPlasmaCannon, matPlasma, matVisor);
-            ArenaPowerup.Create(new Vector3(14f, 0.8f, 14f), PowerupType.WeaponScattergun, matRifle, matAccent);
-            ArenaPowerup.Create(new Vector3(-14f, 0.8f, -14f), PowerupType.WeaponMachineGun, matRifle, matAccent);
-            ArenaPowerup.Create(new Vector3(18f, 0.8f, 0f), PowerupType.ShieldBoost, matPowerupShield, matVisor);
-            ArenaPowerup.Create(new Vector3(-18f, 0.8f, 0f), PowerupType.SpeedBoost, matPowerupSpeed, matAccent);
-            ArenaPowerup.Create(new Vector3(0f, 1.8f, 0f), PowerupType.RapidFire, matPowerupRapid, matAccent);
+            // --- CENTRAL TOWN PLAZA ---
+            BuildBlock(arenaRoot.transform, "Plaza_Platform", new Vector3(0f, 0.45f, 0f), new Vector3(12f, 0.9f, 12f), matPavement);
+            BuildBlock(arenaRoot.transform, "Plaza_FountainRim", new Vector3(0f, 1.15f, 0f), new Vector3(4.2f, 0.5f, 4.2f), matStucco);
+            BuildBlock(arenaRoot.transform, "Plaza_FountainWater", new Vector3(0f, 1.36f, 0f), new Vector3(3.8f, 0.1f, 3.8f), matWater);
+            BuildBlock(arenaRoot.transform, "Plaza_MonumentObelisk", new Vector3(0f, 2.4f, 0f), new Vector3(1.2f, 2.2f, 1.2f), matTerracotta);
+            // Low stone cover benches in plaza
+            BuildBlock(arenaRoot.transform, "Plaza_Bench_North", new Vector3(0f, 1.25f, 4.5f), new Vector3(4.5f, 0.75f, 0.6f), matStucco);
+            BuildBlock(arenaRoot.transform, "Plaza_Bench_South", new Vector3(0f, 1.25f, -4.5f), new Vector3(4.5f, 0.75f, 0.6f), matStucco);
+
+            // 4 Town Jump Pads (Launch players to high balconies and container roofs)
+            JumpPad.Create(new Vector3(-13f, 0.1f, 13f), Quaternion.Euler(0f, 135f, 0f), matJumpPad);
+            JumpPad.Create(new Vector3(13f, 0.1f, 13f), Quaternion.Euler(0f, -135f, 0f), matJumpPad);
+            JumpPad.Create(new Vector3(-13f, 0.1f, -13f), Quaternion.Euler(0f, 45f, 0f), matJumpPad);
+            JumpPad.Create(new Vector3(13f, 0.1f, -13f), Quaternion.Euler(0f, -45f, 0f), matJumpPad);
+
+            // Strategic Weapon Drops and Powerup Spawners across Overtown
+            ArenaPowerup.Create(new Vector3(0f, 3.6f, 0f), PowerupType.WeaponSniperRifle, matRifle, matVisor);
+            ArenaPowerup.Create(new Vector3(0f, 4.3f, 18.5f), PowerupType.WeaponAssaultRifle, matRifle, matTerracotta);
+            ArenaPowerup.Create(new Vector3(0f, 3.9f, -21f), PowerupType.WeaponMachineGun, matRifle, matTerracotta);
+            ArenaPowerup.Create(new Vector3(18f, 5.3f, 0f), PowerupType.WeaponPlasmaCannon, matPlasma, matVisor);
+            ArenaPowerup.Create(new Vector3(-18f, 1.0f, 0f), PowerupType.WeaponScattergun, matRifle, matTerracotta);
+            ArenaPowerup.Create(new Vector3(0f, 0.8f, 21f), PowerupType.RapidFire, matPowerupRapid, matTerracotta);
+            ArenaPowerup.Create(new Vector3(18f, 0.8f, 14f), PowerupType.ShieldBoost, matPowerupShield, matVisor);
+            ArenaPowerup.Create(new Vector3(-18f, 0.8f, -14f), PowerupType.SpeedBoost, matPowerupSpeed, matTerracotta);
 
             // Shared room menu setup
             var menuObj = new GameObject("Shared room menu");
@@ -177,7 +212,22 @@ namespace RushArena.Editor
             };
 
             AssetDatabase.SaveAssets();
-            Debug.Log("RUSH Arena: Full Sci-Fi Arena, Jump Pads, Powerups, and Match Systems configured!");
+            Debug.Log("RUSH Arena: Full Sunlit Modular Town Arena (Overtown) configured!");
+        }
+
+        private static Material GetOrCreateMaterial(string name, Color color, float smoothness = 0.2f)
+        {
+            string path = MaterialFolder + name + ".mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                mat = new Material(shader);
+                mat.color = color;
+                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            return mat;
         }
 
         private static void BuildBlock(Transform parent, string name, Vector3 pos, Vector3 scale, Material mat, float tiltX = 0f)

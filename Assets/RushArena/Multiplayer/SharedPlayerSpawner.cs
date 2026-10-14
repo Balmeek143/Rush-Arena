@@ -13,14 +13,14 @@ namespace RushArena.Multiplayer
 
         public static readonly Vector3[] TacticalSpawns = new Vector3[]
         {
-            new Vector3(-12f, 1.0f, -18f),
-            new Vector3( 12f, 1.0f, -18f),
-            new Vector3(-18f, 1.0f,   0f),
-            new Vector3( 18f, 1.0f,   0f),
-            new Vector3(-12f, 1.0f,  18f),
-            new Vector3( 12f, 1.0f,  18f),
-            new Vector3(  0f, 4.5f,  -2f),
-            new Vector3(  0f, 4.5f,   2f),
+            new Vector3(-12f, 0.8f, -14f),
+            new Vector3( 12f, 0.8f, -14f),
+            new Vector3(-14f, 0.8f,   0f),
+            new Vector3( 14f, 0.8f,   0f),
+            new Vector3(-12f, 0.8f,  14f),
+            new Vector3( 12f, 0.8f,  14f),
+            new Vector3(  0f, 4.4f,  18f), // Town Hall Balcony
+            new Vector3(  0f, 4.0f, -20f), // Warehouse Roof
         };
 
         public void Configure(NetworkObject prefab, NetworkObject managerPrefab = null)

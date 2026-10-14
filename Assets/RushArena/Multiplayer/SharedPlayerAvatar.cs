@@ -124,10 +124,17 @@ namespace RushArena.Multiplayer
             ? "∞"
             : (reserveAmmo.TryGetValue(CurrentWeapon, out int r) ? r.ToString("00") : "00");
 
-        // Sniper Scoping state
+        // Sniper Scoping & ADS state
         public bool IsScoped { get; private set; }
+        public bool IsAds { get; private set; }
         private bool wasScopedLastFrame;
         private float boltActionAt;
+
+        // Tactical Ground Slide state
+        public bool IsSliding { get; private set; }
+        private float slideEndTime;
+        private float slideCooldownUntil;
+        private Vector3 slideDirection;
         public float SniperCycleProgress
         {
             get
@@ -248,7 +255,7 @@ namespace RushArena.Multiplayer
                 ownerCamera.nearClipPlane = 0.05f;
                 ownerCamera.farClipPlane = 120f;
                 ownerCamera.clearFlags = CameraClearFlags.SolidColor;
-                ownerCamera.backgroundColor = new Color(0.08f, 0.11f, 0.16f);
+                ownerCamera.backgroundColor = new Color(0.46f, 0.74f, 0.98f);
                 eye.AddComponent<AudioListener>();
 
                 // Build all first-person weapon models
@@ -350,10 +357,17 @@ namespace RushArena.Multiplayer
                     commands.Capture(source.Sample(), source.IsActive);
                 }
 
-                // Smooth Optical Zoom for Sniper Rifle Scoping
+                // Smooth Camera Eye Height Dip for Sliding and Optical Zoom for Scoping / ADS
                 if (ownerCamera != null)
                 {
-                    float targetFov = (IsScoped && CurrentWeapon == WeaponType.SniperRifle) ? 22f : GameSettings.FieldOfView;
+                    float targetEyeY = IsSliding ? 0.85f : 1.62f;
+                    Vector3 curEyePos = ownerCamera.transform.localPosition;
+                    ownerCamera.transform.localPosition = Vector3.Lerp(curEyePos, new Vector3(0f, targetEyeY, 0f), 16f * Time.deltaTime);
+
+                    float baseFov = GameSettings.FieldOfView;
+                    float targetFov = (IsScoped && CurrentWeapon == WeaponType.SniperRifle)
+                        ? 22f
+                        : (IsAds ? baseFov * 0.76f : baseFov);
                     ownerCamera.fieldOfView = Mathf.Lerp(ownerCamera.fieldOfView, targetFov, 22f * Time.deltaTime);
                 }
 
@@ -415,7 +429,9 @@ namespace RushArena.Multiplayer
                         }
                     }
 
-                    Vector3 basePos = CurrentWeapon == WeaponType.Pistol ? new Vector3(0.20f, -0.20f, 0.40f) : defaultWeaponPos;
+                    Vector3 hipPos = CurrentWeapon == WeaponType.Pistol ? new Vector3(0.20f, -0.20f, 0.40f) : defaultWeaponPos;
+                    Vector3 adsPos = CurrentWeapon == WeaponType.Pistol ? new Vector3(0f, -0.15f, 0.32f) : new Vector3(0f, -0.17f, 0.36f);
+                    Vector3 basePos = IsAds ? adsPos : hipPos;
                     activeWeapon.transform.localPosition = basePos + weaponRecoilPos + reloadPosOffset;
                     activeWeapon.transform.localRotation = Quaternion.Euler(weaponRecoilRot + reloadRotOffset);
                 }
@@ -488,8 +504,11 @@ namespace RushArena.Multiplayer
                 UpdateActiveFpWeaponVisual();
             }
 
-            // Look rotation with precision sensitivity scaling when scoped
-            float sensMultiplier = IsScoped ? GameSettings.AdsSensitivity : 1.0f;
+            // True Iron Sights ADS for non-sniper firearms
+            IsAds = command.ZoomPressed && CurrentWeapon != WeaponType.SniperRifle && !IsReloading && !IsDead;
+
+            // Look rotation with precision sensitivity scaling when scoped or ADS
+            float sensMultiplier = (IsScoped || IsAds) ? GameSettings.AdsSensitivity : 1.0f;
             kcc.AddLookRotation(new Vector2(-command.LookY * sensMultiplier, command.LookX * sensMultiplier));
             Vector2 look = kcc.GetLookRotation(true, false);
             AimPitch = look.x;
@@ -518,6 +537,30 @@ namespace RushArena.Multiplayer
             JumpBufferLeft = command.JumpPressed ? 0.12f : Mathf.Max(0f, JumpBufferLeft - dt);
             if (kcc.IsGrounded && kcc.RealVelocity.y <= 0f) JumpConsumed = false;
 
+            // Tactical Ground Slide check
+            if (command.SlidePressed && (command.Sprint || MoveVelocity.magnitude > 5.5f) && kcc.IsGrounded && !IsSliding && Time.time >= slideCooldownUntil)
+            {
+                IsSliding = true;
+                slideEndTime = Time.time + 0.65f;
+                slideCooldownUntil = Time.time + 1.05f;
+                slideDirection = MoveVelocity.sqrMagnitude > 0.1f ? MoveVelocity.normalized : (kcc.TransformRotation * Vector3.forward);
+                MoveVelocity = slideDirection * (sprintSpeed * 1.45f);
+                if (audioSource != null) ProceduralAudio.PlaySlide(audioSource);
+            }
+
+            if (IsSliding)
+            {
+                MoveVelocity = Vector3.MoveTowards(MoveVelocity, slideDirection * walkSpeed, 14f * dt);
+                if (command.JumpPressed && CoyoteLeft > 0f)
+                {
+                    IsSliding = false; // Slide-hop preserves momentum!
+                }
+                else if (Time.time >= slideEndTime || !kcc.IsGrounded || MoveVelocity.magnitude < 3f)
+                {
+                    IsSliding = false;
+                }
+            }
+
             float jumpImpulse = 0f;
             if (!JumpConsumed && CoyoteLeft > 0f && JumpBufferLeft > 0f)
             {
@@ -541,11 +584,14 @@ namespace RushArena.Multiplayer
             float currentSprintSpeed = (HasSpeedBoost ? sprintSpeed * 1.35f : sprintSpeed) * moveSens;
             float currentWalkSpeed = (HasSpeedBoost ? walkSpeed * 1.35f : walkSpeed) * moveSens;
 
-            Vector2 axes = Vector2.ClampMagnitude(new Vector2(command.MoveX, command.MoveY), 1f);
-            Vector3 desired = kcc.TransformRotation * new Vector3(axes.x, 0f, axes.y)
-                * (command.Sprint ? currentSprintSpeed : currentWalkSpeed);
-            float acceleration = kcc.IsGrounded ? groundAcceleration : airAcceleration;
-            MoveVelocity = Vector3.MoveTowards(MoveVelocity, desired, acceleration * dt);
+            if (!IsSliding)
+            {
+                Vector2 axes = Vector2.ClampMagnitude(new Vector2(command.MoveX, command.MoveY), 1f);
+                Vector3 desired = kcc.TransformRotation * new Vector3(axes.x, 0f, axes.y)
+                    * (command.Sprint ? currentSprintSpeed : currentWalkSpeed);
+                float acceleration = kcc.IsGrounded ? groundAcceleration : airAcceleration;
+                MoveVelocity = Vector3.MoveTowards(MoveVelocity, desired, acceleration * dt);
+            }
             kcc.SetGravity(-gravity);
             kcc.Move(MoveVelocity, jumpImpulse);
 
@@ -897,13 +943,31 @@ namespace RushArena.Multiplayer
                 if (target != null && !target.IsDead)
                 {
                     hitCombatant = true;
-                    target.ApplyDamage(damage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    bool isHeadshot = h.point.y >= (target.transform.position.y + 1.45f);
+                    int shotDamage = isHeadshot ? Mathf.RoundToInt(damage * 2.0f) : damage;
+                    if (isHeadshot) ProceduralAudio.PlayHeadshotDing();
+                    if (combatHud != null) combatHud.SpawnDamagePopup(h.point, shotDamage, isHeadshot);
+                    bool targetDied = (target.Health + target.Shield) <= shotDamage;
+                    target.ApplyDamage(shotDamage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    if (targetDied && combatHud != null)
+                    {
+                        combatHud.TriggerAccolade("ENEMY ELIMINATED", 100, isHeadshot ? "HEADSHOT (+50)" : null);
+                    }
                     return true;
                 }
-                else if (botTarget != null)
+                else if (botTarget != null && botTarget.currentHealth > 0)
                 {
                     hitCombatant = true;
-                    botTarget.ApplyDamage(damage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    bool isHeadshot = h.point.y >= (botTarget.transform.position.y + 1.45f);
+                    int shotDamage = isHeadshot ? Mathf.RoundToInt(damage * 2.0f) : damage;
+                    if (isHeadshot) ProceduralAudio.PlayHeadshotDing();
+                    if (combatHud != null) combatHud.SpawnDamagePopup(h.point, shotDamage, isHeadshot);
+                    bool botDied = (botTarget.currentHealth + botTarget.currentShield) <= shotDamage;
+                    botTarget.ApplyDamage(shotDamage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    if (botDied && combatHud != null)
+                    {
+                        combatHud.TriggerAccolade("ENEMY ELIMINATED", 100, isHeadshot ? "HEADSHOT (+50)" : null);
+                    }
                     return true;
                 }
                 break;

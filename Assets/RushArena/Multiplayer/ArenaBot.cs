@@ -71,22 +71,22 @@ namespace RushArena.Multiplayer
         public Material weaponMaterial;
         public Material tracerMaterial;
 
-        // Tactical waypoints in the 54m x 54m arena
+        // Tactical waypoints in the 62m x 62m Overtown arena
         private static readonly Vector3[] TacticalWaypoints = new Vector3[]
         {
-            new Vector3(0f, 3.8f, 0f),      // Central platform center
-            new Vector3(4f, 3.8f, 4f),      // Central platform NE
-            new Vector3(-4f, 3.8f, -4f),    // Central platform SW
-            new Vector3(0f, 0.5f, 16f),     // North lane
-            new Vector3(0f, 0.5f, -16f),    // South lane
-            new Vector3(16f, 0.5f, 0f),     // East courtyard
-            new Vector3(-16f, 0.5f, 0f),    // West courtyard
-            new Vector3(-14f, 0.5f, 14f),   // NW jump pad approach
-            new Vector3(14f, 0.5f, 14f),    // NE jump pad approach
-            new Vector3(-14f, 0.5f, -14f),  // SW jump pad approach
-            new Vector3(14f, 0.5f, -14f),   // SE jump pad approach
-            new Vector3(0f, 1.8f, 11f),     // North ramp
-            new Vector3(0f, 1.8f, -11f),    // South ramp
+            new Vector3(0f, 1.2f, 0f),       // Plaza fountain
+            new Vector3(4f, 1.0f, 4f),       // Plaza NE
+            new Vector3(-4f, 1.0f, -4f),     // Plaza SW
+            new Vector3(0f, 0.5f, 16f),      // North lane
+            new Vector3(0f, 0.5f, -16f),     // South lane
+            new Vector3(16f, 0.5f, 0f),      // East container yard
+            new Vector3(-16f, 0.5f, 0f),     // West storage yard
+            new Vector3(-13f, 0.5f, 13f),    // NW jump pad approach
+            new Vector3(13f, 0.5f, 13f),     // NE jump pad approach
+            new Vector3(-13f, 0.5f, -13f),   // SW jump pad approach
+            new Vector3(13f, 0.5f, -13f),    // SE jump pad approach
+            new Vector3(0f, 4.4f, 18.5f),    // Town Hall Balcony
+            new Vector3(0f, 4.0f, -21f),     // Warehouse Roof
         };
 
         public static ArenaBot Create(Vector3 position, string name, int id, WeaponType weaponType,
