@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using RushArena.Core;
+using RushArena.Runtime;
 using RushArena.Runtime.Audio;
 using UnityEngine;
 
 namespace RushArena.Multiplayer
 {
     // Autonomous AI Combat Droid for solo practice and arena multiplayer.
+    // Supports Free-For-All battle royale (fights both human players and opponent bots),
+    // configurable difficulty levels, jump pad navigation, and occluded overhead health bars.
     [RequireComponent(typeof(CharacterController))]
     public sealed class ArenaBot : MonoBehaviour
     {
@@ -170,7 +173,7 @@ namespace RushArena.Multiplayer
                 tracer.enabled = false;
             }
 
-            // Find closest player enemy
+            // Find closest enemy combatant (human player OR another bot)
             FindTarget();
 
             // Run AI State
@@ -191,11 +194,12 @@ namespace RushArena.Multiplayer
 
         private void FindTarget()
         {
-            // Look for nearest alive human player
-            var players = FindObjectsByType<SharedPlayerAvatar>();
-            float closestDist = 28f;
+            float closestDist = 32f;
             Transform bestTarget = null;
+            Vector3 eyePos = transform.position + Vector3.up * 1.6f;
 
+            // 1. Search for alive human players
+            var players = FindObjectsByType<SharedPlayerAvatar>();
             for (int i = 0; i < players.Length; i++)
             {
                 var p = players[i];
@@ -203,13 +207,30 @@ namespace RushArena.Multiplayer
                 float d = Vector3.Distance(transform.position, p.transform.position);
                 if (d < closestDist)
                 {
-                    // Check line of sight
-                    Vector3 eyePos = transform.position + Vector3.up * 1.6f;
                     Vector3 toTarget = (p.transform.position + Vector3.up * 1.2f) - eyePos;
                     if (!Physics.Raycast(eyePos, toTarget.normalized, d - 0.5f, ~0, QueryTriggerInteraction.Ignore))
                     {
                         closestDist = d;
                         bestTarget = p.transform;
+                    }
+                }
+            }
+
+            // 2. Search for other bots in Free-For-All
+            for (int i = 0; i < AllBots.Count; i++)
+            {
+                var b = AllBots[i];
+                if (b == null || b == this || b.state == BotState.Dead) continue;
+                float d = Vector3.Distance(transform.position, b.transform.position);
+                // Slight jitter so all bots don't uniformly target the same combatant
+                float scoredDist = d * UnityEngine.Random.Range(0.85f, 1.15f);
+                if (scoredDist < closestDist)
+                {
+                    Vector3 toTarget = (b.transform.position + Vector3.up * 1.2f) - eyePos;
+                    if (!Physics.Raycast(eyePos, toTarget.normalized, d - 0.5f, ~0, QueryTriggerInteraction.Ignore))
+                    {
+                        closestDist = scoredDist;
+                        bestTarget = b.transform;
                     }
                 }
             }
@@ -255,7 +276,8 @@ namespace RushArena.Multiplayer
             if (toEnemy.sqrMagnitude > 0.01f)
             {
                 Quaternion targetRot = Quaternion.LookRotation(toEnemy.normalized, Vector3.up);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 8f * Time.deltaTime);
+                float rotSpeed = GameSettings.BotDifficultyLevel == 2 ? 12f : 8f;
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, rotSpeed * Time.deltaTime);
             }
 
             // Aim upper body pitch at enemy head/torso
@@ -268,30 +290,33 @@ namespace RushArena.Multiplayer
                 upperBody.localRotation = Quaternion.Euler(pitch, 0f, 0f);
             }
 
+            // Difficulty-adjusted movement speeds
+            int difficulty = GameSettings.BotDifficultyLevel;
+            float curSprint = difficulty == 2 ? 10.5f : (difficulty == 0 ? 7.5f : sprintSpeed);
+
             // Strafe or advance
             Vector3 moveTarget;
             if (dist > 14f)
             {
-                // Advance
                 moveTarget = currentEnemy.position;
             }
             else if (dist < 6f)
             {
-                // Back away slightly
                 moveTarget = transform.position - toEnemy.normalized * 4f;
             }
             else
             {
-                // Strafe left/right
+                // Dynamic strafe dodging
                 Vector3 side = Vector3.Cross(Vector3.up, toEnemy.normalized);
-                float strafeDir = Mathf.Sin(Time.time * 1.8f) > 0f ? 1f : -1f;
-                moveTarget = transform.position + side * strafeDir * 5f;
+                float strafeFrequency = difficulty == 2 ? 3.2f : 1.8f;
+                float strafeDir = Mathf.Sin(Time.time * strafeFrequency) > 0f ? 1f : -1f;
+                moveTarget = transform.position + side * strafeDir * (difficulty == 2 ? 6f : 4f);
             }
 
-            MoveTowards(moveTarget, sprintSpeed);
+            MoveTowards(moveTarget, curSprint);
 
             // Fire weapons in bursts
-            if (dist < 26f)
+            if (dist < 28f)
             {
                 ExecuteBotFiring();
             }
@@ -299,13 +324,25 @@ namespace RushArena.Multiplayer
 
         private void ExecuteBotFiring()
         {
+            int diff = GameSettings.BotDifficultyLevel;
+            float baseBurst = weapon == WeaponType.AssaultRifle ? 0.9f : 0.5f;
+            float burstDur = diff switch { 0 => baseBurst * 0.6f, 2 => baseBurst * 1.4f, _ => baseBurst };
+            float pauseDur = diff switch { 0 => 2.4f, 2 => 0.75f, _ => 1.4f };
+
             if (isBursting)
             {
                 if (Time.time < burstEndTime)
                 {
                     if (Time.time >= nextFireTime)
                     {
-                        float cadence = weapon == WeaponType.AssaultRifle ? 0.15f : 0.5f;
+                        float cadence = weapon switch
+                        {
+                            WeaponType.Pistol => 0.28f,
+                            WeaponType.AssaultRifle => 0.14f,
+                            WeaponType.PlasmaCannon => 0.48f,
+                            WeaponType.Scattergun => 0.65f,
+                            _ => 0.15f
+                        };
                         nextFireTime = Time.time + cadence;
                         FireAtTarget();
                     }
@@ -313,13 +350,13 @@ namespace RushArena.Multiplayer
                 else
                 {
                     isBursting = false;
-                    nextFireTime = Time.time + UnityEngine.Random.Range(1.2f, 2.2f);
+                    nextFireTime = Time.time + UnityEngine.Random.Range(pauseDur * 0.8f, pauseDur * 1.2f);
                 }
             }
             else if (Time.time >= nextFireTime)
             {
                 isBursting = true;
-                burstEndTime = Time.time + (weapon == WeaponType.AssaultRifle ? UnityEngine.Random.Range(0.6f, 1.2f) : 0.6f);
+                burstEndTime = Time.time + burstDur;
             }
         }
 
@@ -330,15 +367,34 @@ namespace RushArena.Multiplayer
             Vector3 eyePos = transform.position + Vector3.up * 1.5f;
             Vector3 targetCenter = currentEnemy.position + Vector3.up * 1.1f;
 
-            // Humanized bot aim error (slight inaccuracy)
-            Vector3 spread = UnityEngine.Random.insideUnitSphere * 0.45f;
+            // Accuracy based on Bot Difficulty
+            int diff = GameSettings.BotDifficultyLevel;
+            float spreadRadius = diff switch
+            {
+                0 => 0.85f, // Easy: wide spread
+                2 => 0.14f, // Hard: laser precision
+                _ => 0.38f  // Medium: balanced
+            };
+
+            Vector3 spread = UnityEngine.Random.insideUnitSphere * spreadRadius;
             Vector3 shootDir = ((targetCenter + spread) - eyePos).normalized;
 
-            // Play firing sound
-            if (weapon == WeaponType.AssaultRifle)
-                ProceduralAudio.PlayRifle(audioSource);
-            else
-                ProceduralAudio.PlayPlasma(audioSource);
+            // Play procedural firing audio per weapon
+            switch (weapon)
+            {
+                case WeaponType.Pistol:
+                    ProceduralAudio.PlayPistol(audioSource);
+                    break;
+                case WeaponType.AssaultRifle:
+                    ProceduralAudio.PlayRifle(audioSource);
+                    break;
+                case WeaponType.PlasmaCannon:
+                    ProceduralAudio.PlayPlasma(audioSource);
+                    break;
+                case WeaponType.Scattergun:
+                    ProceduralAudio.PlayScattergun(audioSource);
+                    break;
+            }
 
             // Raycast shot
             RaycastHit hit;
@@ -346,15 +402,34 @@ namespace RushArena.Multiplayer
             if (Physics.Raycast(eyePos, shootDir, out hit, 50f, ~0, QueryTriggerInteraction.Ignore))
             {
                 endPoint = hit.point;
+
+                float dmgMult = diff switch { 0 => 0.65f, 2 => 1.25f, _ => 1.0f };
+                int baseDmg = weapon switch
+                {
+                    WeaponType.Pistol => 14,
+                    WeaponType.AssaultRifle => 10,
+                    WeaponType.PlasmaCannon => 24,
+                    WeaponType.Scattergun => 18,
+                    _ => 10
+                };
+                int finalDmg = Mathf.Max(1, Mathf.RoundToInt(baseDmg * dmgMult));
+
                 var player = hit.collider.GetComponentInParent<SharedPlayerAvatar>();
                 if (player != null && !player.IsDead)
                 {
-                    int dmg = weapon == WeaponType.AssaultRifle ? 9 : 18;
-                    player.TakeDamage(dmg, botId, weapon);
+                    player.TakeDamage(finalDmg, botId, weapon);
+                }
+                else
+                {
+                    var otherBot = hit.collider.GetComponentInParent<ArenaBot>();
+                    if (otherBot != null && otherBot != this && otherBot.state != BotState.Dead)
+                    {
+                        otherBot.ApplyDamage(finalDmg, botId, weapon);
+                    }
                 }
             }
 
-            // Draw tracer
+            // Draw bullet tracer
             if (tracer != null)
             {
                 tracer.SetPosition(0, eyePos + transform.forward * 0.4f);
@@ -458,14 +533,38 @@ namespace RushArena.Multiplayer
 
             currentHealth = Mathf.Max(0, currentHealth - damage);
 
+            // Retaliate against attacker if currently patrolling or target lost
+            if (currentEnemy == null && attackerId != botId)
+            {
+                var players = FindObjectsByType<SharedPlayerAvatar>();
+                for (int i = 0; i < players.Length; i++)
+                {
+                    if (players[i].PlayerNumber == attackerId && !players[i].IsDead)
+                    {
+                        currentEnemy = players[i].transform;
+                        state = BotState.Attack;
+                        break;
+                    }
+                }
+                if (currentEnemy == null)
+                {
+                    var botAttacker = AllBots.Find(b => b.botId == attackerId && b.state != BotState.Dead);
+                    if (botAttacker != null)
+                    {
+                        currentEnemy = botAttacker.transform;
+                        state = BotState.Attack;
+                    }
+                }
+            }
+
             // Report elimination when health reaches 0
             if (currentHealth <= 0)
             {
-                Eliminate(attackerId);
+                Eliminate(attackerId, weaponUsed);
             }
         }
 
-        private void Eliminate(int killerId)
+        private void Eliminate(int killerId, WeaponType weaponUsed)
         {
             state = BotState.Dead;
             respawnTime = Time.time + 3.0f;
@@ -473,21 +572,31 @@ namespace RushArena.Multiplayer
             if (characterVisual != null) characterVisual.SetActive(false);
             if (controller != null) controller.enabled = false;
 
-            // Report to match manager
-            if (SharedMatchManager.Instance != null)
+            string killerName = $"Player {killerId + 1}";
+            if (killerId >= 100)
             {
-                SharedMatchManager.Instance.RpcReportKill($"Player {killerId + 1}", $"[BOT] {botName}", weapon.ToString());
+                var killerBot = AllBots.Find(b => b.botId == killerId);
+                killerName = killerBot != null ? $"[BOT] {killerBot.botName}" : $"[BOT #{killerId}]";
             }
 
-            // Award kill to attacker
-            var players = FindObjectsByType<SharedPlayerAvatar>();
-            for (int i = 0; i < players.Length; i++)
+            // Report to match manager kill feed
+            if (SharedMatchManager.Instance != null)
             {
-                if (players[i].PlayerNumber == killerId)
+                SharedMatchManager.Instance.RpcReportKill(killerName, $"[BOT] {botName}", weaponUsed.ToString());
+            }
+
+            // Award kill to human player if applicable
+            if (killerId < 100)
+            {
+                var players = FindObjectsByType<SharedPlayerAvatar>();
+                for (int i = 0; i < players.Length; i++)
                 {
-                    players[i].Kills++;
-                    players[i].Score += 100;
-                    break;
+                    if (players[i].PlayerNumber == killerId)
+                    {
+                        players[i].Kills++;
+                        players[i].Score += 100;
+                        break;
+                    }
                 }
             }
         }
@@ -519,14 +628,26 @@ namespace RushArena.Multiplayer
         {
             if (state == BotState.Dead) return;
 
-            // Draw overhead health/shield bar billboard
             Camera cam = Camera.main;
             if (cam == null) return;
 
             Vector3 worldPos = transform.position + Vector3.up * 2.1f;
-            Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
+            Vector3 camPos = cam.transform.position;
+            float dist = Vector3.Distance(camPos, worldPos);
 
-            if (screenPos.z > 0f && screenPos.z < 35f)
+            if (dist > 32f) return;
+
+            // Linecast Occlusion Check: Prevents showing overhead health bars through walls and obstacles!
+            if (Physics.Linecast(camPos, worldPos, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (!hit.transform.IsChildOf(transform))
+                {
+                    return; // Occluded by obstacle!
+                }
+            }
+
+            Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
+            if (screenPos.z > 0.4f)
             {
                 float w = 110f;
                 float h = 12f;
@@ -534,26 +655,29 @@ namespace RushArena.Multiplayer
                 float y = Screen.height - screenPos.y;
 
                 // Name label
-                var nameStyle = new GUIStyle(GUI.skin.label);
-                nameStyle.alignment = TextAnchor.MiddleCenter;
-                nameStyle.fontSize = 11;
-                nameStyle.normal.textColor = new Color(1f, 0.4f, 0.4f);
+                var nameStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 11,
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = new Color(1f, 0.45f, 0.45f) }
+                };
                 GUI.Label(new Rect(x - 20f, y - 18f, w + 40f, 18f), $"[BOT] {botName}", nameStyle);
 
                 // Background
-                GUI.color = new Color(0.1f, 0.1f, 0.1f, 0.8f);
+                GUI.color = new Color(0.08f, 0.08f, 0.12f, 0.85f);
                 GUI.DrawTexture(new Rect(x - 1, y - 1, w + 2, h + 2), Texture2D.whiteTexture);
 
                 // Health bar (green/red)
                 float healthPct = (float)currentHealth / maxHealth;
-                GUI.color = healthPct > 0.4f ? new Color(0.2f, 0.85f, 0.3f) : new Color(0.9f, 0.2f, 0.2f);
+                GUI.color = healthPct > 0.4f ? new Color(0.2f, 0.88f, 0.35f) : new Color(0.95f, 0.2f, 0.2f);
                 GUI.DrawTexture(new Rect(x, y, w * healthPct, h * 0.6f), Texture2D.whiteTexture);
 
                 // Shield bar (cyan)
                 if (currentShield > 0)
                 {
                     float shieldPct = (float)currentShield / maxShield;
-                    GUI.color = new Color(0.2f, 0.8f, 1f);
+                    GUI.color = new Color(0.2f, 0.82f, 1f);
                     GUI.DrawTexture(new Rect(x, y + h * 0.6f, w * shieldPct, h * 0.4f), Texture2D.whiteTexture);
                 }
 

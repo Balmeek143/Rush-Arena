@@ -43,11 +43,11 @@ namespace RushArena.Multiplayer
             NetworkObject avatar = Runner.Spawn(playerPrefab, spawn, Quaternion.identity, player);
             Runner.SetPlayerObject(player, avatar);
 
-            // Auto-spawn 3 AI bots for single-player practice / host testing
+            // Auto-spawn AI bots for single-player practice / host testing based on settings
             if (Runner.IsSharedModeMasterClient && !botsSpawned)
             {
                 botsSpawned = true;
-                SpawnPracticeBots(3);
+                SpawnPracticeBots(RushArena.Runtime.GameSettings.DesiredBotCount);
             }
         }
 
@@ -60,14 +60,14 @@ namespace RushArena.Multiplayer
             Material rifle = avatar != null ? avatar.rifleMaterial : null;
             Material tracer = avatar != null ? avatar.laserTracerMaterial : null;
 
-            string[] names = new[] { "Nexus-9", "Viper-4", "Cipher-7", "Apex-1", "Titan-3" };
+            string[] names = new[] { "Nexus-9", "Viper-4", "Cipher-7", "Apex-1", "Titan-3", "Ghost-8", "Havoc-2", "Echo-5" };
 
             for (int i = 0; i < count; i++)
             {
                 int spawnIdx = (ArenaBot.AllBots.Count + i + 2) % TacticalSpawns.Length;
                 Vector3 pos = TacticalSpawns[spawnIdx];
                 string botName = names[ArenaBot.AllBots.Count % names.Length];
-                WeaponType w = (i % 2 == 0) ? WeaponType.AssaultRifle : WeaponType.PlasmaCannon;
+                WeaponType w = (WeaponType)((ArenaBot.AllBots.Count + i) % 4);
                 ArenaBot.Create(pos, botName, 100 + ArenaBot.AllBots.Count, w, armor, visor, rifle, tracer);
             }
         }

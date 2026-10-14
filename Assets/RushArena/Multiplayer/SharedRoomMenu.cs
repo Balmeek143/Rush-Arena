@@ -140,34 +140,56 @@ namespace RushArena.Multiplayer
 
         private void OnGUI()
         {
-            GUILayout.BeginArea(new Rect(15, 15, 385, 175), GUI.skin.box);
-            GUILayout.Label("RUSH Arena | Shared Mode development");
-            if (runner == null)
-            {
-                roomName = GUILayout.TextField(roomName, 32);
-                if (GUILayout.Button("Join or create named room")) Join();
-            }
-            else if (GUILayout.Button("Leave room")) Leave();
-            GUILayout.Label(status);
             if (runner != null && runner.IsRunning)
             {
-                GUILayout.Label($"Players: {runner.SessionInfo.PlayerCount}/10 | AI Bots: {ArenaBot.AllBots.Count}");
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Spawn Bot (+1)"))
-                {
-                    var spawner = FindAnyObjectByType<SharedPlayerSpawner>();
-                    if (spawner != null) spawner.SpawnPracticeBots(1);
-                }
-                if (GUILayout.Button("Clear All Bots"))
-                {
-                    for (int i = ArenaBot.AllBots.Count - 1; i >= 0; i--)
-                    {
-                        if (ArenaBot.AllBots[i] != null) Destroy(ArenaBot.AllBots[i].gameObject);
-                    }
-                    ArenaBot.AllBots.Clear();
-                }
-                GUILayout.EndHorizontal();
+                // In-match: small minimal room indicator at top-right
+                return;
             }
+
+            GUILayout.BeginArea(new Rect(15, 15, 390, 290), GUI.skin.box);
+            var titleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 15,
+                normal = { textColor = Color.cyan }
+            };
+            GUILayout.Label("RUSH ARENA | MULTIPLAYER LOBBY", titleStyle);
+            GUILayout.Space(6);
+
+            GUILayout.Label("Room Name:");
+            roomName = GUILayout.TextField(roomName, 32);
+
+            GUILayout.Space(6);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Desired AI Bots: {RushArena.Runtime.GameSettings.DesiredBotCount}", GUILayout.Width(180));
+            int newBotCount = (int)GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.DesiredBotCount, 0, 8);
+            if (newBotCount != RushArena.Runtime.GameSettings.DesiredBotCount) RushArena.Runtime.GameSettings.DesiredBotCount = newBotCount;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Bot Difficulty:", GUILayout.Width(110));
+            string[] diffs = new[] { "Easy", "Medium", "Hard" };
+            int curDiff = RushArena.Runtime.GameSettings.BotDifficultyLevel;
+            for (int i = 0; i < diffs.Length; i++)
+            {
+                if (GUILayout.Toggle(curDiff == i, diffs[i], "Button", GUILayout.Width(75)))
+                {
+                    if (curDiff != i) RushArena.Runtime.GameSettings.BotDifficultyLevel = i;
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Mouse Sensitivity: {RushArena.Runtime.GameSettings.MouseSensitivity:0.0}x", GUILayout.Width(180));
+            float newSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.MouseSensitivity, 0.2f, 3.5f);
+            if (Mathf.Abs(newSens - RushArena.Runtime.GameSettings.MouseSensitivity) > 0.02f) RushArena.Runtime.GameSettings.MouseSensitivity = newSens;
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+            if (GUILayout.Button("ENTER SCI-FI ARENA", GUILayout.Height(38))) Join();
+
+            GUILayout.Space(4);
+            GUILayout.Label(status);
             GUILayout.EndArea();
         }
     }

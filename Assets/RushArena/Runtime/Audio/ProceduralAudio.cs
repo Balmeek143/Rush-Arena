@@ -6,8 +6,12 @@ namespace RushArena.Runtime.Audio
     // Zero external audio asset dependencies; 100% cross-platform (Windows, WebGL, Android).
     public static class ProceduralAudio
     {
+        private static AudioClip pistolClip;
         private static AudioClip rifleClip;
         private static AudioClip plasmaClip;
+        private static AudioClip scatterClip;
+        private static AudioClip reloadClip;
+        private static AudioClip weaponPickupClip;
         private static AudioClip hitMarkerClip;
         private static AudioClip jumpPadClip;
         private static AudioClip powerupClip;
@@ -25,6 +29,12 @@ namespace RushArena.Runtime.Audio
             return globalSource;
         }
 
+        public static void PlayPistol(AudioSource source = null)
+        {
+            if (pistolClip == null) pistolClip = CreatePistolClip();
+            Play(source != null ? source : GetGlobalSource(), pistolClip, 0.8f, Random.Range(0.96f, 1.04f));
+        }
+
         public static void PlayRifle(AudioSource source = null)
         {
             if (rifleClip == null) rifleClip = CreateRifleClip();
@@ -35,6 +45,24 @@ namespace RushArena.Runtime.Audio
         {
             if (plasmaClip == null) plasmaClip = CreatePlasmaClip();
             Play(source != null ? source : GetGlobalSource(), plasmaClip, 0.85f, Random.Range(0.92f, 1.08f));
+        }
+
+        public static void PlayScattergun(AudioSource source = null)
+        {
+            if (scatterClip == null) scatterClip = CreateScattergunClip();
+            Play(source != null ? source : GetGlobalSource(), scatterClip, 0.95f, Random.Range(0.90f, 1.05f));
+        }
+
+        public static void PlayReload(AudioSource source = null)
+        {
+            if (reloadClip == null) reloadClip = CreateReloadClip();
+            Play(source != null ? source : GetGlobalSource(), reloadClip, 0.85f, 1f);
+        }
+
+        public static void PlayWeaponPickup()
+        {
+            if (weaponPickupClip == null) weaponPickupClip = CreateWeaponPickupClip();
+            Play(GetGlobalSource(), weaponPickupClip, 0.95f, 1f);
         }
 
         public static void PlayHitMarker()
@@ -180,6 +208,83 @@ namespace RushArena.Runtime.Audio
                 data[i] = Mathf.Clamp((thud + crunch) * envelope, -1f, 1f);
             }
             var clip = AudioClip.Create("DamageHurt", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreatePistolClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.12f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 45f);
+                float crack = (Random.value * 2f - 1f) * 0.8f;
+                float pop = Mathf.Sin(2f * Mathf.PI * (280f - t * 800f) * t) * 0.4f;
+                data[i] = Mathf.Clamp((crack + pop) * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("PistolShot", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateScattergunClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.32f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 18f);
+                float boom = Mathf.Sin(2f * Mathf.PI * (120f - t * 250f) * t) * 0.6f;
+                float blast = (Random.value * 2f - 1f) * 0.8f;
+                data[i] = Mathf.Clamp((boom + blast) * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("ScattergunShot", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateReloadClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.45f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                // Double mechanical click
+                float click1 = Mathf.Exp(-Mathf.Abs(t - 0.08f) * 120f) * Mathf.Sin(2f * Mathf.PI * 1800f * t);
+                float click2 = Mathf.Exp(-Mathf.Abs(t - 0.32f) * 100f) * Mathf.Sin(2f * Mathf.PI * 1400f * t);
+                float sliding = (t > 0.08f && t < 0.32f) ? (Random.value * 2f - 1f) * 0.15f : 0f;
+                data[i] = Mathf.Clamp((click1 + click2 + sliding) * 0.7f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("WeaponReload", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateWeaponPickupClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.28f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 9f);
+                float freq = t < 0.10f ? 440f : (t < 0.18f ? 659.25f : 880f); // A4 -> E5 -> A5
+                float tone = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.7f;
+                data[i] = Mathf.Clamp(tone * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("WeaponPickup", samples, 1, sampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

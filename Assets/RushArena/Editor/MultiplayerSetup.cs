@@ -151,10 +151,13 @@ namespace RushArena.Editor
             JumpPad.Create(new Vector3(-16f, 0.1f, -16f), Quaternion.Euler(0f, 45f, 0f), matJumpPad);
             JumpPad.Create(new Vector3(16f, 0.1f, -16f), Quaternion.Euler(0f, -45f, 0f), matJumpPad);
 
-            // Tactical Powerup Spawners
-            ArenaPowerup.Create(new Vector3(0f, 4.2f, 0f), PowerupType.RapidFire, matPowerupRapid);
-            ArenaPowerup.Create(new Vector3(18f, 0.8f, 0f), PowerupType.ShieldBoost, matPowerupShield);
-            ArenaPowerup.Create(new Vector3(-18f, 0.8f, 0f), PowerupType.SpeedBoost, matPowerupSpeed);
+            // Tactical Weapon Drops and Powerup Spawners across the Arena
+            ArenaPowerup.Create(new Vector3(0f, 4.2f, 0f), PowerupType.WeaponScattergun, matRifle, matAccent);
+            ArenaPowerup.Create(new Vector3(0f, 0.8f, 18f), PowerupType.WeaponAssaultRifle, matRifle, matAccent);
+            ArenaPowerup.Create(new Vector3(0f, 0.8f, -18f), PowerupType.WeaponPlasmaCannon, matPlasma, matVisor);
+            ArenaPowerup.Create(new Vector3(18f, 0.8f, 0f), PowerupType.ShieldBoost, matPowerupShield, matVisor);
+            ArenaPowerup.Create(new Vector3(-18f, 0.8f, 0f), PowerupType.SpeedBoost, matPowerupSpeed, matAccent);
+            ArenaPowerup.Create(new Vector3(0f, 1.8f, 0f), PowerupType.RapidFire, matPowerupRapid, matAccent);
 
             // Shared room menu setup
             var menuObj = new GameObject("Shared room menu");

@@ -34,14 +34,31 @@ namespace RushArena.Input
                 command.MoveY = (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0);
                 command.Sprint = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
                 command.JumpPressed = keyboard.spaceKey.wasPressedThisFrame;
-                command.SwitchWeapon = keyboard.qKey.wasPressedThisFrame || keyboard.digit1Key.wasPressedThisFrame || keyboard.digit2Key.wasPressedThisFrame;
+                if (keyboard.qKey.wasPressedThisFrame)
+                {
+                    command.SwitchWeapon = true;
+                    command.WeaponScroll = 1;
+                }
             }
             if (mouse != null)
             {
                 Vector2 delta = mouse.delta.ReadValue();
-                command.LookX = delta.x * DegreesPerPixel;
-                command.LookY = delta.y * DegreesPerPixel;
+                float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.MouseSensitivity;
+                command.LookX = delta.x * sens;
+                command.LookY = delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
                 command.Fire = mouse.leftButton.isPressed;
+
+                float scroll = mouse.scroll.ReadValue().y;
+                if (scroll > 0.05f)
+                {
+                    command.SwitchWeapon = true;
+                    command.WeaponScroll = 1;
+                }
+                else if (scroll < -0.05f)
+                {
+                    command.SwitchWeapon = true;
+                    command.WeaponScroll = -1;
+                }
             }
             return command;
         }

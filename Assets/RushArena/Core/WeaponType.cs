@@ -3,7 +3,9 @@ namespace RushArena.Core
     // Pure weapon definition enum with zero engine/network dependencies.
     public enum WeaponType : byte
     {
-        AssaultRifle = 0,
-        PlasmaCannon = 1
+        Pistol = 0,
+        AssaultRifle = 1,
+        PlasmaCannon = 2,
+        Scattergun = 3
     }
 }

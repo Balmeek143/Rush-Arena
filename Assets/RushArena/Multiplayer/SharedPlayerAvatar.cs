@@ -3,12 +3,15 @@ using Fusion;
 using Fusion.Addons.SimpleKCC;
 using RushArena.Core;
 using RushArena.Input;
+using RushArena.Runtime;
 using RushArena.Runtime.Audio;
 using UnityEngine;
 
 namespace RushArena.Multiplayer
 {
     // Each Shared Mode owner advances its own KCC; proxies render replicated state.
+    // Handles tactical inventory progression (Pistol default, arena weapon pickups lost on death),
+    // mouse wheel weapon cycling, mechanical reload animations, and jump pad physics.
     [RequireComponent(typeof(NetworkObject), typeof(SimpleKCC))]
     public sealed class SharedPlayerAvatar : NetworkBehaviour
     {
@@ -53,18 +56,31 @@ namespace RushArena.Multiplayer
         private PlayerInputSource source;
         private Camera ownerCamera;
         private AudioSource audioSource;
-        private readonly RaycastHit[] shotHits = new RaycastHit[16];
         private float nextShotAt;
         private Vector3 spawnPosition;
         private CombatHud combatHud;
 
-        // First-person weapon references
+        // Buffered JumpPad impulse to execute strictly inside FixedUpdateNetwork
+        private Vector3 pendingLaunchImpulse;
+        private bool hasPendingLaunchImpulse;
+
+        // Weapon inventory (Everyone starts with Pistol; arena weapon drops lost on death)
+        private readonly List<WeaponType> unlockedWeapons = new List<WeaponType> { WeaponType.Pistol };
+
+        // First-person weapon models
+        private GameObject fpPistol;
         private GameObject fpRifle;
         private GameObject fpPlasma;
+        private GameObject fpScatter;
+        private Transform fpMuzzlePistol;
         private Transform fpMuzzleRifle;
         private Transform fpMuzzlePlasma;
+        private Transform fpMuzzleScatter;
+        private Light fpLightPistol;
         private Light fpLightRifle;
         private Light fpLightPlasma;
+        private Light fpLightScatter;
+
         private LineRenderer tracer;
         private float tracerUntil;
         private float muzzleFlashUntil;
@@ -72,21 +88,30 @@ namespace RushArena.Multiplayer
         private Vector3 weaponRecoilRot;
         private Vector3 defaultWeaponPos = new Vector3(0.24f, -0.22f, 0.48f);
 
-        // Third-person avatar presentation
+        // Third-person avatar presentation for proxies
         private GameObject tpCharacter;
         private Transform tpUpperBody;
         private Transform tpLeftLeg;
         private Transform tpRightLeg;
         private Transform tpWeapon;
         private float strideCycle;
-        private float damageFlashUntil;
-        private Material originalArmorMat;
-        private Material damageFlashMat;
 
-        // Ammo state (local client tracking)
+        // Ammo state (local tracking)
         public int AmmoInClip { get; private set; }
-        public int MaxClip => CurrentWeapon == WeaponType.AssaultRifle ? 30 : 10;
+        public int MaxClip => CurrentWeapon switch
+        {
+            WeaponType.Pistol => 12,
+            WeaponType.AssaultRifle => 30,
+            WeaponType.PlasmaCannon => 10,
+            WeaponType.Scattergun => 8,
+            _ => 20
+        };
+
+        // Tactical Reload Animation State
         public bool IsReloading { get; private set; }
+        public float ReloadProgress => IsReloading && reloadDuration > 0.01f ? Mathf.Clamp01((Time.time - reloadStartTime) / reloadDuration) : 0f;
+        private float reloadStartTime;
+        private float reloadDuration = 1.4f;
         private float reloadCompleteAt;
 
         // Respawn state
@@ -102,7 +127,7 @@ namespace RushArena.Multiplayer
         {
             get
             {
-                if (HasRapidFire) return "RAPID FIRE";
+                if (HasRapidFire) return "OVERCHARGE";
                 if (HasSpeedBoost) return "SUPER SPEED";
                 if (IsInvulnerable) return "SHIELDED";
                 return string.Empty;
@@ -140,7 +165,6 @@ namespace RushArena.Multiplayer
 
         private void EnsureMaterials()
         {
-            // If materials are not linked in the inspector, fetch from Resources/Assets or fallback to existing bodyRenderer
             if (armorMaterial == null && bodyRenderer != null) armorMaterial = bodyRenderer.sharedMaterial;
             if (visorMaterial == null && armorMaterial != null) visorMaterial = armorMaterial;
             if (rifleMaterial == null && armorMaterial != null) rifleMaterial = armorMaterial;
@@ -161,8 +185,13 @@ namespace RushArena.Multiplayer
             {
                 Health = 100;
                 Shield = 50;
-                AmmoInClip = 30;
                 PlayerNumber = Runner.LocalPlayer.PlayerId;
+
+                // Reset inventory to starting Pistol
+                unlockedWeapons.Clear();
+                unlockedWeapons.Add(WeaponType.Pistol);
+                CurrentWeapon = WeaponType.Pistol;
+                AmmoInClip = MaxClip;
 
                 source = gameObject.AddComponent<PlayerInputSource>();
                 if (bodyRenderer != null) bodyRenderer.enabled = false;
@@ -177,17 +206,20 @@ namespace RushArena.Multiplayer
                 eye.transform.localPosition = new Vector3(0f, 1.62f, 0f);
                 eye.tag = "MainCamera";
                 ownerCamera = eye.AddComponent<Camera>();
-                ownerCamera.fieldOfView = 85f;
+                ownerCamera.fieldOfView = GameSettings.FieldOfView;
                 ownerCamera.nearClipPlane = 0.05f;
                 ownerCamera.farClipPlane = 120f;
                 ownerCamera.clearFlags = CameraClearFlags.SolidColor;
                 ownerCamera.backgroundColor = new Color(0.08f, 0.11f, 0.16f);
                 eye.AddComponent<AudioListener>();
 
-                // Build first-person weapons
+                // Build all 4 first-person weapon models
+                fpPistol = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.Pistol, rifleMaterial, visorMaterial, out fpMuzzlePistol, out fpLightPistol);
                 fpRifle = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.AssaultRifle, rifleMaterial, visorMaterial, out fpMuzzleRifle, out fpLightRifle);
                 fpPlasma = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.PlasmaCannon, plasmaMaterial, visorMaterial, out fpMuzzlePlasma, out fpLightPlasma);
-                fpPlasma.SetActive(false);
+                fpScatter = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.Scattergun, rifleMaterial, visorMaterial, out fpMuzzleScatter, out fpLightScatter);
+
+                UpdateActiveFpWeaponVisual();
 
                 // Line renderer for bullet tracers
                 tracer = eye.gameObject.AddComponent<LineRenderer>();
@@ -203,11 +235,60 @@ namespace RushArena.Multiplayer
             }
             else
             {
-                // Proxy avatar: Disable old capsule, build stylized 3D combatant avatar!
+                // Proxy avatar: stylized 3D combatant gladiator
                 if (bodyRenderer != null) bodyRenderer.enabled = false;
                 tpCharacter = ProceduralVisuals.BuildThirdPersonCharacter(transform, armorMaterial, visorMaterial, rifleMaterial,
                     out tpUpperBody, out tpLeftLeg, out tpRightLeg, out tpWeapon);
             }
+        }
+
+        private void UpdateActiveFpWeaponVisual()
+        {
+            if (fpPistol != null) fpPistol.SetActive(CurrentWeapon == WeaponType.Pistol);
+            if (fpRifle != null) fpRifle.SetActive(CurrentWeapon == WeaponType.AssaultRifle);
+            if (fpPlasma != null) fpPlasma.SetActive(CurrentWeapon == WeaponType.PlasmaCannon);
+            if (fpScatter != null) fpScatter.SetActive(CurrentWeapon == WeaponType.Scattergun);
+
+            if (tracer != null)
+            {
+                tracer.sharedMaterial = (CurrentWeapon == WeaponType.PlasmaCannon) ? plasmaTracerMaterial : laserTracerMaterial;
+            }
+        }
+
+        private GameObject GetActiveFpWeaponObject()
+        {
+            return CurrentWeapon switch
+            {
+                WeaponType.Pistol => fpPistol,
+                WeaponType.AssaultRifle => fpRifle,
+                WeaponType.PlasmaCannon => fpPlasma,
+                WeaponType.Scattergun => fpScatter,
+                _ => fpPistol
+            };
+        }
+
+        private Transform GetActiveMuzzle()
+        {
+            return CurrentWeapon switch
+            {
+                WeaponType.Pistol => fpMuzzlePistol,
+                WeaponType.AssaultRifle => fpMuzzleRifle,
+                WeaponType.PlasmaCannon => fpMuzzlePlasma,
+                WeaponType.Scattergun => fpMuzzleScatter,
+                _ => fpMuzzlePistol
+            };
+        }
+
+        private Light GetActiveMuzzleLight()
+        {
+            return CurrentWeapon switch
+            {
+                WeaponType.Pistol => fpLightPistol,
+                WeaponType.AssaultRifle => fpLightRifle,
+                WeaponType.PlasmaCannon => fpLightPlasma,
+                WeaponType.Scattergun => fpLightScatter,
+                _ => fpLightPistol
+            };
         }
 
         private void Update()
@@ -221,7 +302,13 @@ namespace RushArena.Multiplayer
                     commands.Capture(source.Sample(), source.IsActive);
                 }
 
-                // Check local reload completion
+                // Update dynamic FOV from settings
+                if (ownerCamera != null && Mathf.Abs(ownerCamera.fieldOfView - GameSettings.FieldOfView) > 0.1f)
+                {
+                    ownerCamera.fieldOfView = GameSettings.FieldOfView;
+                }
+
+                // Check reload completion
                 if (IsReloading && Time.time >= reloadCompleteAt)
                 {
                     IsReloading = false;
@@ -234,24 +321,53 @@ namespace RushArena.Multiplayer
                     Respawn();
                 }
 
-                // Smooth view weapon recoil recovery
-                if (ownerCamera != null)
+                // Mechanical Procedural Reload & View Recoil Animation
+                var activeWeapon = GetActiveFpWeaponObject();
+                if (activeWeapon != null)
                 {
                     weaponRecoilPos = Vector3.Lerp(weaponRecoilPos, Vector3.zero, 18f * Time.deltaTime);
                     weaponRecoilRot = Vector3.Lerp(weaponRecoilRot, Vector3.zero, 18f * Time.deltaTime);
-                    var activeFpWeapon = CurrentWeapon == WeaponType.AssaultRifle ? fpRifle : fpPlasma;
-                    if (activeFpWeapon != null)
+
+                    Vector3 reloadPosOffset = Vector3.zero;
+                    Vector3 reloadRotOffset = Vector3.zero;
+
+                    if (IsReloading)
                     {
-                        activeFpWeapon.transform.localPosition = defaultWeaponPos + weaponRecoilPos;
-                        activeFpWeapon.transform.localRotation = Quaternion.Euler(weaponRecoilRot);
+                        float p = ReloadProgress;
+                        if (p < 0.35f)
+                        {
+                            // Phase 1: Gun dips down and tilts to eject magazine
+                            float t = p / 0.35f;
+                            reloadPosOffset = Vector3.Lerp(Vector3.zero, new Vector3(-0.04f, -0.14f, -0.06f), Mathf.SmoothStep(0f, 1f, t));
+                            reloadRotOffset = Vector3.Lerp(Vector3.zero, new Vector3(24f, -14f, 16f), Mathf.SmoothStep(0f, 1f, t));
+                        }
+                        else if (p < 0.70f)
+                        {
+                            // Phase 2: Insert fresh magazine/battery (tactical shake)
+                            float t = (p - 0.35f) / 0.35f;
+                            float shake = Mathf.Sin(t * Mathf.PI * 2f) * 0.015f;
+                            reloadPosOffset = new Vector3(-0.04f, -0.14f + shake, -0.06f);
+                            reloadRotOffset = new Vector3(24f + Mathf.Sin(t * Mathf.PI) * 4f, -14f, 16f);
+                        }
+                        else
+                        {
+                            // Phase 3: Rack slide/bolt and return to combat stance
+                            float t = (p - 0.70f) / 0.30f;
+                            reloadPosOffset = Vector3.Lerp(new Vector3(-0.04f, -0.14f, -0.06f), Vector3.zero, Mathf.SmoothStep(0f, 1f, t));
+                            reloadRotOffset = Vector3.Lerp(new Vector3(24f, -14f, 16f), Vector3.zero, Mathf.SmoothStep(0f, 1f, t));
+                        }
                     }
+
+                    Vector3 basePos = CurrentWeapon == WeaponType.Pistol ? new Vector3(0.20f, -0.20f, 0.40f) : defaultWeaponPos;
+                    activeWeapon.transform.localPosition = basePos + weaponRecoilPos + reloadPosOffset;
+                    activeWeapon.transform.localRotation = Quaternion.Euler(weaponRecoilRot + reloadRotOffset);
                 }
 
-                // Turn off muzzle flash light after 0.04s
+                // Turn off muzzle flash light after duration
                 if (Time.unscaledTime >= muzzleFlashUntil)
                 {
-                    if (fpLightRifle != null && fpLightRifle.enabled) fpLightRifle.enabled = false;
-                    if (fpLightPlasma != null && fpLightPlasma.enabled) fpLightPlasma.enabled = false;
+                    var light = GetActiveMuzzleLight();
+                    if (light != null && light.enabled) light.enabled = false;
                 }
 
                 // Turn off tracer line
@@ -304,14 +420,14 @@ namespace RushArena.Multiplayer
             Vector2 look = kcc.GetLookRotation(true, false);
             AimPitch = look.x;
 
-            // Switch weapons
-            if (command.SwitchWeapon && !IsReloading)
+            // Weapon switching via mouse wheel scroll or Q
+            if (command.WeaponScroll != 0 && !IsReloading)
             {
-                CurrentWeapon = CurrentWeapon == WeaponType.AssaultRifle ? WeaponType.PlasmaCannon : WeaponType.AssaultRifle;
-                AmmoInClip = MaxClip;
-                if (fpRifle != null) fpRifle.SetActive(CurrentWeapon == WeaponType.AssaultRifle);
-                if (fpPlasma != null) fpPlasma.SetActive(CurrentWeapon == WeaponType.PlasmaCannon);
-                if (tracer != null) tracer.sharedMaterial = CurrentWeapon == WeaponType.AssaultRifle ? laserTracerMaterial : plasmaTracerMaterial;
+                CycleWeapon(command.WeaponScroll);
+            }
+            else if (command.SwitchWeapon && !IsReloading)
+            {
+                CycleWeapon(1);
             }
 
             float dt = Runner.DeltaTime;
@@ -327,7 +443,17 @@ namespace RushArena.Multiplayer
                 CoyoteLeft = JumpBufferLeft = 0f;
             }
 
-            // Power-up movement speed boost
+            // Apply buffered launch impulse from JumpPad inside fixed update step
+            if (hasPendingLaunchImpulse)
+            {
+                MoveVelocity = new Vector3(pendingLaunchImpulse.x, 0f, pendingLaunchImpulse.z);
+                jumpImpulse = pendingLaunchImpulse.y;
+                hasPendingLaunchImpulse = false;
+                JumpConsumed = true;
+                CoyoteLeft = JumpBufferLeft = 0f;
+            }
+
+            // Speed boost power-up
             float currentSprintSpeed = HasSpeedBoost ? sprintSpeed * 1.35f : sprintSpeed;
             float currentWalkSpeed = HasSpeedBoost ? walkSpeed * 1.35f : walkSpeed;
 
@@ -347,15 +473,10 @@ namespace RushArena.Multiplayer
                 MoveVelocity = Vector3.zero;
             }
 
-            // Check Powerup Pickups
+            // Check Powerup and Weapon Pickups
             if (ArenaPowerup.TryCollect(transform.position, out var collectedPowerup))
             {
-                if (collectedPowerup == PowerupType.RapidFire)
-                    RapidFireTimer = TickTimer.CreateFromSeconds(Runner, 10f);
-                else if (collectedPowerup == PowerupType.ShieldBoost)
-                    Shield = Mathf.Min(100, Shield + 50);
-                else if (collectedPowerup == PowerupType.SpeedBoost)
-                    SpeedBoostTimer = TickTimer.CreateFromSeconds(Runner, 10f);
+                HandlePowerupCollected(collectedPowerup);
             }
 
             // Shooting
@@ -363,6 +484,65 @@ namespace RushArena.Multiplayer
             {
                 Fire();
             }
+        }
+
+        private void HandlePowerupCollected(PowerupType type)
+        {
+            switch (type)
+            {
+                case PowerupType.WeaponAssaultRifle:
+                    UnlockAndEquipWeapon(WeaponType.AssaultRifle);
+                    break;
+                case PowerupType.WeaponPlasmaCannon:
+                    UnlockAndEquipWeapon(WeaponType.PlasmaCannon);
+                    break;
+                case PowerupType.WeaponScattergun:
+                    UnlockAndEquipWeapon(WeaponType.Scattergun);
+                    break;
+                case PowerupType.ShieldBoost:
+                    Shield = Mathf.Min(100, Shield + 50);
+                    if (combatHud != null) combatHud.ShowPickupNotification("SHIELD +50 BOOST!");
+                    break;
+                case PowerupType.SpeedBoost:
+                    SpeedBoostTimer = TickTimer.CreateFromSeconds(Runner, 12f);
+                    if (combatHud != null) combatHud.ShowPickupNotification("SUPER SPEED ACTIVE!");
+                    break;
+                case PowerupType.RapidFire:
+                    RapidFireTimer = TickTimer.CreateFromSeconds(Runner, 12f);
+                    if (combatHud != null) combatHud.ShowPickupNotification("OVERCHARGE ACTIVE!");
+                    break;
+            }
+        }
+
+        public void UnlockAndEquipWeapon(WeaponType weapon)
+        {
+            if (!unlockedWeapons.Contains(weapon))
+            {
+                unlockedWeapons.Add(weapon);
+            }
+            SwitchToWeapon(weapon);
+            if (combatHud != null)
+            {
+                combatHud.ShowPickupNotification($"ACQUIRED: {weapon.ToString().ToUpper()}!");
+            }
+        }
+
+        public void CycleWeapon(int direction)
+        {
+            if (unlockedWeapons.Count <= 1 || IsReloading) return;
+            int curIdx = unlockedWeapons.IndexOf(CurrentWeapon);
+            if (curIdx < 0) curIdx = 0;
+            int nextIdx = (curIdx + direction + unlockedWeapons.Count) % unlockedWeapons.Count;
+            SwitchToWeapon(unlockedWeapons[nextIdx]);
+        }
+
+        public void SwitchToWeapon(WeaponType weapon)
+        {
+            if (CurrentWeapon == weapon && AmmoInClip > 0) return;
+            CurrentWeapon = weapon;
+            AmmoInClip = MaxClip;
+            IsReloading = false;
+            UpdateActiveFpWeaponVisual();
         }
 
         private void Fire()
@@ -376,38 +556,112 @@ namespace RushArena.Multiplayer
             AmmoInClip--;
             bool rapid = HasRapidFire;
 
-            float fireInterval = CurrentWeapon == WeaponType.AssaultRifle
-                ? (rapid ? 0.07f : 0.14f)
-                : (rapid ? 0.28f : 0.55f);
+            float fireInterval = CurrentWeapon switch
+            {
+                WeaponType.Pistol => 0.22f,
+                WeaponType.AssaultRifle => (rapid ? 0.07f : 0.13f),
+                WeaponType.PlasmaCannon => (rapid ? 0.25f : 0.50f),
+                WeaponType.Scattergun => 0.70f,
+                _ => 0.15f
+            };
             nextShotAt = Time.time + fireInterval;
 
-            // Recoil kickback
-            weaponRecoilPos = new Vector3(Random.Range(-0.015f, 0.015f), Random.Range(0.01f, 0.02f), -0.065f);
-            weaponRecoilRot = new Vector3(-4.5f, Random.Range(-2f, 2f), 0f);
+            // Recoil kickback per weapon
+            weaponRecoilPos = CurrentWeapon == WeaponType.Scattergun
+                ? new Vector3(Random.Range(-0.02f, 0.02f), 0.035f, -0.11f)
+                : new Vector3(Random.Range(-0.015f, 0.015f), Random.Range(0.01f, 0.02f), -0.065f);
+            weaponRecoilRot = CurrentWeapon == WeaponType.Scattergun
+                ? new Vector3(-8f, Random.Range(-3f, 3f), 0f)
+                : new Vector3(-4.5f, Random.Range(-2f, 2f), 0f);
 
             // Muzzle flash
             muzzleFlashUntil = Time.unscaledTime + 0.045f;
-            if (CurrentWeapon == WeaponType.AssaultRifle)
+            var light = GetActiveMuzzleLight();
+            if (light != null) light.enabled = true;
+
+            // Play firing audio
+            switch (CurrentWeapon)
             {
-                ProceduralAudio.PlayRifle(audioSource);
-                if (fpLightRifle != null) fpLightRifle.enabled = true;
+                case WeaponType.Pistol:
+                    ProceduralAudio.PlayPistol(audioSource);
+                    break;
+                case WeaponType.AssaultRifle:
+                    ProceduralAudio.PlayRifle(audioSource);
+                    break;
+                case WeaponType.PlasmaCannon:
+                    ProceduralAudio.PlayPlasma(audioSource);
+                    break;
+                case WeaponType.Scattergun:
+                    ProceduralAudio.PlayScattergun(audioSource);
+                    break;
+            }
+
+            // Raycast hit detection
+            Vector3 origin = ownerCamera.transform.position;
+            Vector3 forward = ownerCamera.transform.forward;
+
+            if (CurrentWeapon == WeaponType.Scattergun)
+            {
+                // Scattergun: fire 6 pellets in a spread cone
+                bool anyHit = false;
+                for (int p = 0; p < 6; p++)
+                {
+                    Vector3 spread = Random.insideUnitSphere * 0.06f;
+                    Vector3 pelletDir = (forward + spread).normalized;
+                    if (CastSingleShot(origin, pelletDir, 12, out Vector3 pelletEnd, out bool combatantHit))
+                    {
+                        anyHit = true;
+                    }
+                    if (p == 0 && tracer != null)
+                    {
+                        Transform muzzle = GetActiveMuzzle();
+                        Vector3 startPos = muzzle != null ? muzzle.position : origin + forward * 0.4f;
+                        tracer.SetPosition(0, startPos);
+                        tracer.SetPosition(1, pelletEnd);
+                        tracer.enabled = true;
+                        tracerUntil = Time.unscaledTime + 0.05f;
+                    }
+                }
+                if (anyHit) ProceduralAudio.PlayHitMarker();
+                if (combatHud != null) combatHud.PulseShot(anyHit);
             }
             else
             {
-                ProceduralAudio.PlayPlasma(audioSource);
-                if (fpLightPlasma != null) fpLightPlasma.enabled = true;
+                int baseDamage = CurrentWeapon switch
+                {
+                    WeaponType.Pistol => 22,
+                    WeaponType.AssaultRifle => (rapid ? 18 : 24),
+                    WeaponType.PlasmaCannon => 52,
+                    _ => 20
+                };
+
+                bool hitCombatant = CastSingleShot(origin, forward, baseDamage, out Vector3 endPoint, out bool isCombatant);
+                if (hitCombatant) ProceduralAudio.PlayHitMarker();
+
+                // Tracer line
+                Transform muzzle = GetActiveMuzzle();
+                Vector3 startPos = muzzle != null ? muzzle.position : origin + forward * 0.4f;
+                tracer.SetPosition(0, startPos);
+                tracer.SetPosition(1, endPoint);
+                tracer.enabled = true;
+                tracerUntil = Time.unscaledTime + 0.05f;
+
+                if (combatHud != null) combatHud.PulseShot(hitCombatant);
             }
 
-            // Raycast hit detection across geometry, players, and bots
-            Vector3 origin = ownerCamera.transform.position;
-            Vector3 forward = ownerCamera.transform.forward;
-            RaycastHit[] hits = Physics.RaycastAll(origin, forward, 80f, ~0, QueryTriggerInteraction.Collide);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            if (AmmoInClip <= 0)
+            {
+                StartReload();
+            }
+        }
 
-            Vector3 end = origin + forward * 60f;
-            SharedPlayerAvatar target = null;
-            ArenaBot botTarget = null;
-            bool hitCombatant = false;
+        private bool CastSingleShot(Vector3 origin, Vector3 direction, int damage, out Vector3 endPoint, out bool hitCombatant)
+        {
+            endPoint = origin + direction * 60f;
+            hitCombatant = false;
+
+            RaycastHit[] hits = Physics.RaycastAll(origin, direction, 80f, ~0, QueryTriggerInteraction.Collide);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
             for (int i = 0; i < hits.Length; i++)
             {
@@ -416,57 +670,43 @@ namespace RushArena.Multiplayer
                 if (h.collider.isTrigger && h.collider.GetComponentInParent<JumpPad>() != null) continue;
                 if (h.collider.isTrigger && h.collider.GetComponentInParent<ArenaPowerup>() != null) continue;
 
-                end = h.point;
-                target = h.collider.GetComponentInParent<SharedPlayerAvatar>();
+                endPoint = h.point;
+                var target = h.collider.GetComponentInParent<SharedPlayerAvatar>();
                 if (target == this) target = null;
-                botTarget = h.collider.GetComponentInParent<ArenaBot>();
+                var botTarget = h.collider.GetComponentInParent<ArenaBot>();
 
                 if (target != null && !target.IsDead)
                 {
                     hitCombatant = true;
+                    target.RpcApplyDamage(damage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    return true;
                 }
                 else if (botTarget != null)
                 {
                     hitCombatant = true;
+                    botTarget.ApplyDamage(damage, Runner.LocalPlayer.PlayerId, CurrentWeapon);
+                    return true;
                 }
                 break;
             }
-
-            // Bullet Tracer line
-            Transform muzzle = CurrentWeapon == WeaponType.AssaultRifle ? fpMuzzleRifle : fpMuzzlePlasma;
-            Vector3 startPos = muzzle != null ? muzzle.position : origin + forward * 0.4f;
-            tracer.SetPosition(0, startPos);
-            tracer.SetPosition(1, end);
-            tracer.enabled = true;
-            tracerUntil = Time.unscaledTime + 0.05f;
-
-            if (hitCombatant)
-            {
-                ProceduralAudio.PlayHitMarker();
-                int dmg = CurrentWeapon == WeaponType.AssaultRifle ? (rapid ? 18 : 24) : 48;
-                if (target != null)
-                {
-                    target.RpcApplyDamage(dmg, Runner.LocalPlayer.PlayerId, CurrentWeapon);
-                }
-                else if (botTarget != null)
-                {
-                    botTarget.ApplyDamage(dmg, Runner.LocalPlayer.PlayerId, CurrentWeapon);
-                }
-            }
-
-            if (combatHud != null) combatHud.PulseShot(hitCombatant);
-
-            if (AmmoInClip <= 0)
-            {
-                StartReload();
-            }
+            return false;
         }
 
-        private void StartReload()
+        public void StartReload()
         {
-            if (IsReloading) return;
+            if (IsReloading || AmmoInClip == MaxClip) return;
             IsReloading = true;
-            reloadCompleteAt = Time.time + (CurrentWeapon == WeaponType.AssaultRifle ? 1.4f : 1.9f);
+            reloadDuration = CurrentWeapon switch
+            {
+                WeaponType.Pistol => 1.1f,
+                WeaponType.AssaultRifle => 1.4f,
+                WeaponType.PlasmaCannon => 1.9f,
+                WeaponType.Scattergun => 1.7f,
+                _ => 1.4f
+            };
+            reloadStartTime = Time.time;
+            reloadCompleteAt = reloadStartTime + reloadDuration;
+            ProceduralAudio.PlayReload(audioSource);
         }
 
         public void TakeDamage(int damage, int attackerPlayerId, WeaponType weaponUsed)
@@ -475,7 +715,6 @@ namespace RushArena.Multiplayer
 
             ProceduralAudio.PlayDamage();
 
-            // Shield absorbs damage first
             if (Shield > 0)
             {
                 if (Shield >= damage)
@@ -510,26 +749,38 @@ namespace RushArena.Multiplayer
         private void OnEliminated(int attackerPlayerId, WeaponType weaponUsed)
         {
             Deaths++;
-            respawnAt = Time.time + 3.0f; // 3-second respawn timer
+            respawnAt = Time.time + 3.0f;
+
+            // Reset weapon inventory: weapons found from powerups are lost upon death!
+            unlockedWeapons.Clear();
+            unlockedWeapons.Add(WeaponType.Pistol);
+            CurrentWeapon = WeaponType.Pistol;
 
             // Award killer
-            var avatars = FindObjectsByType<SharedPlayerAvatar>();
-            string killerName = "Player " + (attackerPlayerId + 1);
-            for (int i = 0; i < avatars.Length; i++)
+            string killerName = $"Player {attackerPlayerId + 1}";
+            if (attackerPlayerId >= 100)
             {
-                if (avatars[i].Object != null && avatars[i].Object.InputAuthority.PlayerId == attackerPlayerId)
+                var killerBot = ArenaBot.AllBots.Find(b => b.botId == attackerPlayerId);
+                killerName = killerBot != null ? $"[BOT] {killerBot.botName}" : $"[BOT #{attackerPlayerId}]";
+            }
+            else
+            {
+                var avatars = FindObjectsByType<SharedPlayerAvatar>();
+                for (int i = 0; i < avatars.Length; i++)
                 {
-                    avatars[i].RpcAwardElimination();
-                    killerName = avatars[i].PlayerDisplayName;
-                    break;
+                    if (avatars[i].Object != null && avatars[i].Object.InputAuthority.PlayerId == attackerPlayerId)
+                    {
+                        avatars[i].RpcAwardElimination();
+                        killerName = avatars[i].PlayerDisplayName;
+                        break;
+                    }
                 }
             }
 
             // Broadcast kill feed event
             if (SharedMatchManager.Instance != null)
             {
-                string weaponName = weaponUsed == WeaponType.AssaultRifle ? "Assault Rifle" : "Plasma Cannon";
-                SharedMatchManager.Instance.RpcReportKill(killerName, PlayerDisplayName, weaponName);
+                SharedMatchManager.Instance.RpcReportKill(killerName, PlayerDisplayName, weaponUsed.ToString());
             }
         }
 
@@ -550,24 +801,27 @@ namespace RushArena.Multiplayer
         {
             Health = 100;
             Shield = 50;
+            unlockedWeapons.Clear();
+            unlockedWeapons.Add(WeaponType.Pistol);
+            CurrentWeapon = WeaponType.Pistol;
             AmmoInClip = MaxClip;
             IsReloading = false;
             MoveVelocity = Vector3.zero;
+            UpdateActiveFpWeaponVisual();
 
-            // Pick a random arena spawn point
             int slot = Random.Range(0, 8);
             var spawn = new Vector3(-16f + (slot % 4) * 10f, 0.2f, -16f + (slot / 4) * 32f);
             kcc.SetPosition(spawn);
 
-            // Grant 2 seconds of invulnerability shield upon respawn
+            // 2 seconds invulnerability upon respawn
             InvulnerableTimer = TickTimer.CreateFromSeconds(Runner, 2.0f);
         }
 
+        // JumpPad launch impulse is buffered and applied safely inside FixedUpdateNetwork
         public void ApplyLaunchImpulse(Vector3 impulse)
         {
-            MoveVelocity = new Vector3(impulse.x, 0f, impulse.z);
-            kcc.SetGravity(-gravity);
-            kcc.Move(MoveVelocity, impulse.y);
+            pendingLaunchImpulse = impulse;
+            hasPendingLaunchImpulse = true;
         }
 
         private void LateUpdate()
@@ -575,6 +829,60 @@ namespace RushArena.Multiplayer
             if (ownerCamera == null) return;
             Vector2 look = kcc.GetLookRotation(true, false);
             ownerCamera.transform.localRotation = Quaternion.Euler(look.x, 0f, 0f);
+        }
+
+        private void OnGUI()
+        {
+            // For remote proxies: draw occluded overhead health bar
+            if (Object == null || Object.HasStateAuthority || IsDead) return;
+
+            Camera cam = Camera.main;
+            if (cam == null) return;
+
+            Vector3 worldPos = transform.position + Vector3.up * 2.1f;
+            Vector3 camPos = cam.transform.position;
+            float dist = Vector3.Distance(camPos, worldPos);
+            if (dist > 32f) return;
+
+            // Linecast occlusion check
+            if (Physics.Linecast(camPos, worldPos, out RaycastHit hit, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (!hit.transform.IsChildOf(transform)) return;
+            }
+
+            Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
+            if (screenPos.z > 0.4f)
+            {
+                float w = 110f;
+                float h = 12f;
+                float x = screenPos.x - w / 2f;
+                float y = Screen.height - screenPos.y;
+
+                var nameStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 11,
+                    fontStyle = FontStyle.Bold,
+                    normal = { textColor = new Color(0.3f, 0.9f, 1f) }
+                };
+                GUI.Label(new Rect(x - 20f, y - 18f, w + 40f, 18f), PlayerDisplayName, nameStyle);
+
+                GUI.color = new Color(0.08f, 0.08f, 0.12f, 0.85f);
+                GUI.DrawTexture(new Rect(x - 1, y - 1, w + 2, h + 2), Texture2D.whiteTexture);
+
+                float healthPct = (float)Health / 100f;
+                GUI.color = healthPct > 0.4f ? new Color(0.2f, 0.88f, 0.35f) : new Color(0.95f, 0.2f, 0.2f);
+                GUI.DrawTexture(new Rect(x, y, w * healthPct, h * 0.6f), Texture2D.whiteTexture);
+
+                if (Shield > 0)
+                {
+                    float shieldPct = (float)Shield / 50f;
+                    GUI.color = new Color(0.2f, 0.82f, 1f);
+                    GUI.DrawTexture(new Rect(x, y + h * 0.6f, w * shieldPct, h * 0.4f), Texture2D.whiteTexture);
+                }
+
+                GUI.color = Color.white;
+            }
         }
 
         private void OnApplicationFocus(bool focused) { if (!focused) commands.Clear(); }

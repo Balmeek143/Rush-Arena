@@ -14,6 +14,7 @@ namespace RushArena.Core
             pending.Sprint = frame.Sprint;
             pending.Fire = frame.Fire;
             pending.SwitchWeapon |= frame.SwitchWeapon;
+            pending.WeaponScroll += frame.WeaponScroll;
             pending.LookX += frame.LookX;
             pending.LookY += frame.LookY;
             pending.JumpPressed |= frame.JumpPressed;
@@ -26,6 +27,7 @@ namespace RushArena.Core
             pending.LookX = pending.LookY = 0f;
             pending.JumpPressed = false;
             pending.SwitchWeapon = false;
+            pending.WeaponScroll = 0;
             return command;
         }
 
