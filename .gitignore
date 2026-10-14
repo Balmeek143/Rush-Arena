@@ -34,3 +34,4 @@
 *.keystore.meta
 *.jks
 *.jks.meta
+/.wrangler/

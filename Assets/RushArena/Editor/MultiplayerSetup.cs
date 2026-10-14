@@ -217,5 +217,38 @@ namespace RushArena.Editor
                 throw new InvalidOperationException("Shared Mode WebGL build failed: " + report.summary.result);
             Debug.Log("RUSH WebGL shared build succeeded: " + output);
         }
+
+        [MenuItem("RUSH Arena/Build Cloudflare Pages WebGL")]
+        public static void BuildCloudflareWebGL()
+        {
+            const string output = "Builds/WebGLCloudflare";
+            Directory.CreateDirectory(output);
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+            PlayerSettings.WebGL.decompressionFallback = false;
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
+                scenes = new[] { ScenePath }, locationPathName = output,
+                target = BuildTarget.WebGL, options = BuildOptions.None
+            });
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new InvalidOperationException("Cloudflare WebGL build failed: " + report.summary.result);
+
+            string headersContent = @"/Build/*.wasm.gz
+  Content-Type: application/wasm
+  Content-Encoding: gzip
+
+/Build/*.data.gz
+  Content-Type: application/octet-stream
+  Content-Encoding: gzip
+
+/Build/*.framework.js.gz
+  Content-Type: application/javascript
+  Content-Encoding: gzip
+
+/Build/*.loader.js
+  Content-Type: application/javascript
+";
+            File.WriteAllText(Path.Combine(output, "_headers"), headersContent);
+            Debug.Log("RUSH Cloudflare WebGL build succeeded: " + output);
+        }
     }
 }
