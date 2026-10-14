@@ -7,6 +7,7 @@ namespace RushArena.Core
         AssaultRifle = 1,
         PlasmaCannon = 2,
         Scattergun = 3,
-        SniperRifle = 4
+        SniperRifle = 4,
+        MachineGun = 5
     }
 }

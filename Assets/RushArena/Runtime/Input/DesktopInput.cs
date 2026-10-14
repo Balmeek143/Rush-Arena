@@ -8,7 +8,8 @@ namespace RushArena.Input
     {
         public static float SuppressFireUntil;
         public static bool IsSettingsOpen;
-        public float DegreesPerPixel = 0.09f;
+        private static int suppressLookFrames;
+        public float DegreesPerPixel = 0.035f;
         public bool IsActive => Application.isFocused && Cursor.lockState == CursorLockMode.Locked && !IsSettingsOpen;
         public PlayerCommand Sample()
         {
@@ -23,14 +24,15 @@ namespace RushArena.Input
             {
                 return default;
             }
-            // Clicking captures the pointer but discards that frame's fire/delta
+            // Clicking captures the pointer but discards initial frames to eliminate cursor-center warp spikes
             if (!IsActive)
             {
                 if (Application.isFocused && mouse != null && mouse.leftButton.wasPressedThisFrame && !IsSettingsOpen)
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;
-                    SuppressFireUntil = Time.unscaledTime + 0.15f;
+                    SuppressFireUntil = Time.unscaledTime + 0.20f;
+                    suppressLookFrames = 3;
                 }
                 return default;
             }
@@ -51,6 +53,18 @@ namespace RushArena.Input
             if (mouse != null)
             {
                 Vector2 delta = mouse.delta.ReadValue();
+                if (suppressLookFrames > 0)
+                {
+                    suppressLookFrames--;
+                    delta = Vector2.zero;
+                }
+                else
+                {
+                    // Clamp per-frame delta to eliminate browser/DPI warp spikes
+                    delta.x = Mathf.Clamp(delta.x, -45f, 45f);
+                    delta.y = Mathf.Clamp(delta.y, -45f, 45f);
+                }
+
                 float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.MouseSensitivity;
                 command.LookX = delta.x * sens;
                 command.LookY = delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
@@ -71,6 +85,6 @@ namespace RushArena.Input
             }
             return command;
         }
-        public void Clear() { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+        public void Clear() { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; suppressLookFrames = 2; }
     }
 }

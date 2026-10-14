@@ -156,6 +156,7 @@ namespace RushArena.Editor
             ArenaPowerup.Create(new Vector3(0f, 0.8f, 18f), PowerupType.WeaponAssaultRifle, matRifle, matAccent);
             ArenaPowerup.Create(new Vector3(0f, 0.8f, -18f), PowerupType.WeaponPlasmaCannon, matPlasma, matVisor);
             ArenaPowerup.Create(new Vector3(14f, 0.8f, 14f), PowerupType.WeaponScattergun, matRifle, matAccent);
+            ArenaPowerup.Create(new Vector3(-14f, 0.8f, -14f), PowerupType.WeaponMachineGun, matRifle, matAccent);
             ArenaPowerup.Create(new Vector3(18f, 0.8f, 0f), PowerupType.ShieldBoost, matPowerupShield, matVisor);
             ArenaPowerup.Create(new Vector3(-18f, 0.8f, 0f), PowerupType.SpeedBoost, matPowerupSpeed, matAccent);
             ArenaPowerup.Create(new Vector3(0f, 1.8f, 0f), PowerupType.RapidFire, matPowerupRapid, matAccent);
@@ -222,10 +223,11 @@ namespace RushArena.Editor
         [MenuItem("RUSH Arena/Build Cloudflare Pages WebGL")]
         public static void BuildCloudflareWebGL()
         {
+            Configure();
             const string output = "Builds/WebGLCloudflare";
             Directory.CreateDirectory(output);
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
-            PlayerSettings.WebGL.decompressionFallback = false;
+            PlayerSettings.WebGL.decompressionFallback = true;
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
                 scenes = new[] { ScenePath }, locationPathName = output,
                 target = BuildTarget.WebGL, options = BuildOptions.None
@@ -233,22 +235,22 @@ namespace RushArena.Editor
             if (report.summary.result != BuildResult.Succeeded)
                 throw new InvalidOperationException("Cloudflare WebGL build failed: " + report.summary.result);
 
-            string headersContent = @"/Build/*.wasm.gz
-  Content-Type: application/wasm
-  Content-Encoding: gzip
-
-/Build/*.data.gz
-  Content-Type: application/octet-stream
-  Content-Encoding: gzip
-
-/Build/*.framework.js.gz
-  Content-Type: application/javascript
-  Content-Encoding: gzip
+            string headersContent = @"/*
+  Access-Control-Allow-Origin: *
 
 /Build/*.loader.js
   Content-Type: application/javascript
+
+/Build/*.wasm.unityweb
+  Content-Type: application/wasm
+
+/Build/*.framework.js.unityweb
+  Content-Type: application/javascript
+
+/Build/*.data.unityweb
+  Content-Type: application/octet-stream
 ";
-            File.WriteAllText(Path.Combine(output, "_headers"), headersContent);
+            File.WriteAllText(Path.Combine(output, "_headers"), headersContent.Replace("\r\n", "\n"));
             Debug.Log("RUSH Cloudflare WebGL build succeeded: " + output);
         }
     }

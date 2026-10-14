@@ -50,11 +50,25 @@ namespace RushArena.Runtime.Audio
         private static AudioClip sniperClip;
         private static AudioClip sniperZoomClip;
         private static AudioClip weaponDepletedClip;
+        private static AudioClip machineGunClip;
+        private static AudioClip powerupDismissClip;
 
         public static void PlayScattergun(AudioSource source = null)
         {
             if (scatterClip == null) scatterClip = CreateScattergunClip();
             Play(source != null ? source : GetGlobalSource(), scatterClip, 0.95f, Random.Range(0.90f, 1.05f));
+        }
+
+        public static void PlayMachineGun(AudioSource source = null)
+        {
+            if (machineGunClip == null) machineGunClip = CreateMachineGunClip();
+            Play(source != null ? source : GetGlobalSource(), machineGunClip, 0.85f, Random.Range(0.94f, 1.06f));
+        }
+
+        public static void PlayPowerupDismiss(AudioSource source = null)
+        {
+            if (powerupDismissClip == null) powerupDismissClip = CreatePowerupDismissClip();
+            Play(source != null ? source : GetGlobalSource(), powerupDismissClip, 0.6f, 1f);
         }
 
         public static void PlaySniper(AudioSource source = null)
@@ -362,6 +376,45 @@ namespace RushArena.Runtime.Audio
                 data[i] = Mathf.Clamp(Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.7f, -1f, 1f);
             }
             var clip = AudioClip.Create("WeaponDepleted", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateMachineGunClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.11f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 36f);
+                float crack = (Random.value * 2f - 1f) * 0.75f;
+                float thud = Mathf.Sin(2f * Mathf.PI * (180f - t * 450f) * t) * 0.5f;
+                float metal = Mathf.Sin(2f * Mathf.PI * 820f * t) * 0.2f;
+                data[i] = Mathf.Clamp((crack + thud + metal) * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("MachineGunShot", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreatePowerupDismissClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.25f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 10f);
+                float freq = Mathf.Lerp(784f, 392f, t / duration);
+                float tone = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.5f;
+                data[i] = Mathf.Clamp(tone * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("PowerupDismiss", samples, 1, sampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

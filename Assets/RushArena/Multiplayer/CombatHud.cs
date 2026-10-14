@@ -219,6 +219,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => "PLASMA CANNON",
                 WeaponType.Scattergun => "SCATTERGUN",
                 WeaponType.SniperRifle => "PRECISION SNIPER",
+                WeaponType.MachineGun => "HEAVY MACHINE GUN",
                 _ => "WEAPON"
             };
 

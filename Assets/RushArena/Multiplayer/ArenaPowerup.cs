@@ -13,11 +13,12 @@ namespace RushArena.Multiplayer
         WeaponAssaultRifle = 3,
         WeaponPlasmaCannon = 4,
         WeaponScattergun = 5,
-        WeaponSniperRifle = 6
+        WeaponSniperRifle = 6,
+        WeaponMachineGun = 7
     }
 
     // Floating 3D holographic weapon drops and tactical powerups.
-    // Dynamically relocates to randomized tactical arena waypoints upon collection and respawn.
+    // Dynamically manages active count = total players in arena - 1, with a dismiss timer and weighted drops.
     public sealed class ArenaPowerup : MonoBehaviour
     {
         public static readonly List<ArenaPowerup> Active = new List<ArenaPowerup>();
@@ -25,12 +26,15 @@ namespace RushArena.Multiplayer
         [SerializeField] private PowerupType type = PowerupType.RapidFire;
         [SerializeField] private float respawnDuration = 14f;
         private float availableAt;
+        private float dismissAt;
+        private bool isSpawnedActive;
         private Transform iconRoot;
         private Material baseMaterial;
         private Material accentMat;
 
         public PowerupType Type => type;
         public bool IsAvailable => Time.time >= availableAt;
+        public bool IsSpawnedActive => isSpawnedActive;
 
         public string DisplayName => type switch
         {
@@ -38,6 +42,7 @@ namespace RushArena.Multiplayer
             PowerupType.WeaponPlasmaCannon => "PLASMA CANNON",
             PowerupType.WeaponScattergun => "SCATTERGUN",
             PowerupType.WeaponSniperRifle => "SNIPER RIFLE",
+            PowerupType.WeaponMachineGun => "HEAVY MACHINE GUN",
             PowerupType.ShieldBoost => "SHIELD +50",
             PowerupType.SpeedBoost => "SUPER SPEED",
             PowerupType.RapidFire => "OVERCHARGE",
@@ -50,6 +55,7 @@ namespace RushArena.Multiplayer
             PowerupType.WeaponPlasmaCannon => new Color(0.2f, 0.85f, 1f),
             PowerupType.WeaponScattergun => new Color(1f, 0.45f, 0.15f),
             PowerupType.WeaponSniperRifle => new Color(0.35f, 1f, 0.5f),
+            PowerupType.WeaponMachineGun => new Color(1f, 0.25f, 0.1f),
             PowerupType.ShieldBoost => new Color(0.25f, 0.75f, 1f),
             PowerupType.SpeedBoost => new Color(0.3f, 1f, 0.4f),
             PowerupType.RapidFire => new Color(1f, 0.3f, 0.9f),
@@ -135,6 +141,10 @@ namespace RushArena.Multiplayer
             {
                 ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.SniperRifle, baseMaterial, accentMat);
             }
+            else if (pType == PowerupType.WeaponMachineGun)
+            {
+                ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.MachineGun, baseMaterial, accentMat);
+            }
             else if (pType == PowerupType.ShieldBoost)
             {
                 var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -180,13 +190,48 @@ namespace RushArena.Multiplayer
             }
         }
 
+        public static PowerupType GetRandomPowerupType()
+        {
+            // Distribution:
+            // Machine Gun: 8% (Rare drop)
+            // Sniper Rifle: 16% (Readily accessible)
+            // Assault Rifle: 16%
+            // Plasma Cannon: 16%
+            // Scattergun: 16%
+            // Shield Boost: 10%
+            // Speed Boost: 10%
+            // RapidFire/Overcharge: 8%
+            int roll = Random.Range(0, 100);
+            if (roll < 8) return PowerupType.WeaponMachineGun;
+            if (roll < 24) return PowerupType.WeaponSniperRifle;
+            if (roll < 40) return PowerupType.WeaponAssaultRifle;
+            if (roll < 56) return PowerupType.WeaponPlasmaCannon;
+            if (roll < 72) return PowerupType.WeaponScattergun;
+            if (roll < 82) return PowerupType.ShieldBoost;
+            if (roll < 92) return PowerupType.SpeedBoost;
+            return PowerupType.RapidFire;
+        }
+
+        public static int GetTotalCombatants()
+        {
+            int players = SharedPlayerAvatar.AllAvatars.Count > 0 ? SharedPlayerAvatar.AllAvatars.Count : 1;
+            int bots = ArenaBot.AllBots != null ? ArenaBot.AllBots.Count : 0;
+            return players + bots;
+        }
+
+        public static int GetTargetActiveCount()
+        {
+            return Mathf.Max(1, GetTotalCombatants() - 1);
+        }
+
         public static bool TryCollect(Vector3 playerPosition, out PowerupType collectedType)
         {
             for (int i = 0; i < Active.Count; i++)
             {
                 var p = Active[i];
-                if (p != null && p.IsAvailable && (p.transform.position - playerPosition).sqrMagnitude <= 2.6f)
+                if (p != null && p.isSpawnedActive && p.IsAvailable && (p.transform.position - playerPosition).sqrMagnitude <= 2.6f)
                 {
+                    p.isSpawnedActive = false;
                     p.availableAt = Time.time + Mathf.Max(6f, p.respawnDuration + Random.Range(-2f, 4f));
                     p.SetVisualActive(false);
                     collectedType = p.Type;
@@ -194,7 +239,8 @@ namespace RushArena.Multiplayer
                     if (collectedType == PowerupType.WeaponAssaultRifle ||
                         collectedType == PowerupType.WeaponPlasmaCannon ||
                         collectedType == PowerupType.WeaponScattergun ||
-                        collectedType == PowerupType.WeaponSniperRifle)
+                        collectedType == PowerupType.WeaponSniperRifle ||
+                        collectedType == PowerupType.WeaponMachineGun)
                     {
                         ProceduralAudio.PlayWeaponPickup();
                     }
@@ -213,6 +259,8 @@ namespace RushArena.Multiplayer
         {
             if (iconRoot == null) iconRoot = transform.Find("HoloIcon");
             Active.Add(this);
+            isSpawnedActive = false;
+            SetVisualActive(false);
         }
 
         private void OnDestroy()
@@ -222,26 +270,92 @@ namespace RushArena.Multiplayer
 
         private void Update()
         {
-            if (iconRoot != null)
+            if (iconRoot != null && isSpawnedActive && IsAvailable)
             {
                 iconRoot.Rotate(0f, 75f * Time.deltaTime, 0f, Space.World);
                 iconRoot.localPosition = new Vector3(0f, 0.45f + Mathf.Sin(Time.time * 2.8f) * 0.12f, 0f);
             }
 
-            bool available = IsAvailable;
-            if (iconRoot != null)
+            // The first active powerup coordinates global spawning to enforce:
+            // Active powerups = total players in arena - 1 (min 1)
+            if (Active.Count > 0 && Active[0] == this)
             {
-                if (!iconRoot.gameObject.activeSelf && available)
+                UpdateManager();
+            }
+
+            // Check dismiss timer: uncollected item expires, plays chime, and relocates to random place
+            if (isSpawnedActive && IsAvailable)
+            {
+                if (Time.time >= dismissAt)
                 {
-                    // Relocate to a random tactical waypoint on respawn
+                    ProceduralAudio.PlayPowerupDismiss();
                     RelocateToRandomWaypoint();
-                    SetVisualActive(true);
-                }
-                else if (iconRoot.gameObject.activeSelf && !available)
-                {
-                    SetVisualActive(false);
+                    type = GetRandomPowerupType();
+                    if (iconRoot != null)
+                    {
+                        BuildHoloVisuals(iconRoot, type);
+                    }
+                    dismissAt = Time.time + 25f;
                 }
             }
+        }
+
+        private static void UpdateManager()
+        {
+            int target = GetTargetActiveCount();
+            int currentActive = 0;
+            for (int i = 0; i < Active.Count; i++)
+            {
+                if (Active[i] != null && Active[i].isSpawnedActive && Active[i].IsAvailable)
+                {
+                    currentActive++;
+                }
+            }
+
+            if (currentActive < target)
+            {
+                for (int i = 0; i < Active.Count && currentActive < target; i++)
+                {
+                    var p = Active[i];
+                    if (p != null && !p.isSpawnedActive && p.IsAvailable)
+                    {
+                        p.ActivateItem();
+                        currentActive++;
+                    }
+                }
+            }
+            else if (currentActive > target)
+            {
+                for (int i = Active.Count - 1; i >= 0 && currentActive > target; i--)
+                {
+                    var p = Active[i];
+                    if (p != null && p.isSpawnedActive && p.IsAvailable)
+                    {
+                        p.DeactivateItem();
+                        currentActive--;
+                    }
+                }
+            }
+        }
+
+        public void ActivateItem()
+        {
+            isSpawnedActive = true;
+            type = GetRandomPowerupType();
+            RelocateToRandomWaypoint();
+            dismissAt = Time.time + 25f;
+            if (iconRoot != null)
+            {
+                BuildHoloVisuals(iconRoot, type);
+            }
+            SetVisualActive(true);
+        }
+
+        public void DeactivateItem()
+        {
+            isSpawnedActive = false;
+            availableAt = Time.time + respawnDuration;
+            SetVisualActive(false);
         }
 
         private void RelocateToRandomWaypoint()
@@ -255,7 +369,7 @@ namespace RushArena.Multiplayer
                 for (int j = 0; j < Active.Count; j++)
                 {
                     var other = Active[j];
-                    if (other != null && other != this && other.IsAvailable && Vector3.Distance(other.transform.position, candidate) < 3.5f)
+                    if (other != null && other != this && other.isSpawnedActive && other.IsAvailable && Vector3.Distance(other.transform.position, candidate) < 3.5f)
                     {
                         occupied = true;
                         break;
@@ -268,23 +382,20 @@ namespace RushArena.Multiplayer
                     break;
                 }
             }
-
-            // Randomize powerup type dynamically upon respawn
-            type = (PowerupType)Random.Range(0, 7);
-            if (iconRoot != null)
-            {
-                BuildHoloVisuals(iconRoot, type);
-            }
         }
 
         private void SetVisualActive(bool active)
         {
-            if (iconRoot != null) iconRoot.gameObject.SetActive(active);
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                renderers[i].enabled = active;
+            }
         }
 
         private void OnGUI()
         {
-            if (!IsAvailable) return;
+            if (!isSpawnedActive || !IsAvailable) return;
 
             Camera cam = Camera.main;
             if (cam == null) return;

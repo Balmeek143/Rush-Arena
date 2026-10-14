@@ -16,6 +16,8 @@ namespace RushArena.Multiplayer
     [RequireComponent(typeof(NetworkObject), typeof(SimpleKCC))]
     public sealed class SharedPlayerAvatar : NetworkBehaviour
     {
+        public static readonly List<SharedPlayerAvatar> AllAvatars = new List<SharedPlayerAvatar>();
+
         [Header("Movement")]
         [SerializeField] private float walkSpeed = 7f;
         [SerializeField] private float sprintSpeed = 10.5f;
@@ -76,16 +78,19 @@ namespace RushArena.Multiplayer
         private GameObject fpPlasma;
         private GameObject fpScatter;
         private GameObject fpSniper;
+        private GameObject fpMachineGun;
         private Transform fpMuzzlePistol;
         private Transform fpMuzzleRifle;
         private Transform fpMuzzlePlasma;
         private Transform fpMuzzleScatter;
         private Transform fpMuzzleSniper;
+        private Transform fpMuzzleMachineGun;
         private Light fpLightPistol;
         private Light fpLightRifle;
         private Light fpLightPlasma;
         private Light fpLightScatter;
         private Light fpLightSniper;
+        private Light fpLightMachineGun;
 
         private LineRenderer tracer;
         private float tracerUntil;
@@ -111,6 +116,7 @@ namespace RushArena.Multiplayer
             WeaponType.PlasmaCannon => 10,
             WeaponType.Scattergun => 8,
             WeaponType.SniperRifle => 5,
+            WeaponType.MachineGun => 50,
             _ => 20
         };
 
@@ -151,6 +157,7 @@ namespace RushArena.Multiplayer
 
         private void Awake()
         {
+            if (!AllAvatars.Contains(this)) AllAvatars.Add(this);
             kcc = GetComponent<SimpleKCC>();
             if (kcc != null)
             {
@@ -232,12 +239,13 @@ namespace RushArena.Multiplayer
                 ownerCamera.backgroundColor = new Color(0.08f, 0.11f, 0.16f);
                 eye.AddComponent<AudioListener>();
 
-                // Build all 5 first-person weapon models
+                // Build all first-person weapon models
                 fpPistol = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.Pistol, rifleMaterial, visorMaterial, out fpMuzzlePistol, out fpLightPistol);
                 fpRifle = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.AssaultRifle, rifleMaterial, visorMaterial, out fpMuzzleRifle, out fpLightRifle);
                 fpPlasma = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.PlasmaCannon, plasmaMaterial, visorMaterial, out fpMuzzlePlasma, out fpLightPlasma);
                 fpScatter = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.Scattergun, rifleMaterial, visorMaterial, out fpMuzzleScatter, out fpLightScatter);
                 fpSniper = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.SniperRifle, rifleMaterial, visorMaterial, out fpMuzzleSniper, out fpLightSniper);
+                fpMachineGun = ProceduralVisuals.BuildFirstPersonWeapon(eye.transform, WeaponType.MachineGun, rifleMaterial, visorMaterial, out fpMuzzleMachineGun, out fpLightMachineGun);
 
                 UpdateActiveFpWeaponVisual();
 
@@ -269,6 +277,7 @@ namespace RushArena.Multiplayer
             if (fpPlasma != null) fpPlasma.SetActive(CurrentWeapon == WeaponType.PlasmaCannon);
             if (fpScatter != null) fpScatter.SetActive(CurrentWeapon == WeaponType.Scattergun);
             if (fpSniper != null) fpSniper.SetActive(CurrentWeapon == WeaponType.SniperRifle && !IsScoped);
+            if (fpMachineGun != null) fpMachineGun.SetActive(CurrentWeapon == WeaponType.MachineGun);
 
             if (tracer != null)
             {
@@ -285,6 +294,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => fpPlasma,
                 WeaponType.Scattergun => fpScatter,
                 WeaponType.SniperRifle => fpSniper,
+                WeaponType.MachineGun => fpMachineGun,
                 _ => fpPistol
             };
         }
@@ -298,6 +308,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => fpMuzzlePlasma,
                 WeaponType.Scattergun => fpMuzzleScatter,
                 WeaponType.SniperRifle => fpMuzzleSniper,
+                WeaponType.MachineGun => fpMuzzleMachineGun,
                 _ => fpMuzzlePistol
             };
         }
@@ -311,6 +322,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => fpLightPlasma,
                 WeaponType.Scattergun => fpLightScatter,
                 WeaponType.SniperRifle => fpLightSniper,
+                WeaponType.MachineGun => fpLightMachineGun,
                 _ => fpLightPistol
             };
         }
@@ -554,6 +566,9 @@ namespace RushArena.Multiplayer
                 case PowerupType.WeaponSniperRifle:
                     UnlockAndEquipWeapon(WeaponType.SniperRifle);
                     break;
+                case PowerupType.WeaponMachineGun:
+                    UnlockAndEquipWeapon(WeaponType.MachineGun);
+                    break;
                 case PowerupType.ShieldBoost:
                     Shield = Mathf.Min(100, Shield + 50);
                     if (combatHud != null) combatHud.ShowPickupNotification("SHIELD +50 BOOST!");
@@ -583,6 +598,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => 10, // 10 clip + 10 reserve = 20 total
                 WeaponType.Scattergun => 8,    // 8 clip + 8 reserve = 16 total
                 WeaponType.SniperRifle => 5,   // 5 clip + 5 reserve = 10 total
+                WeaponType.MachineGun => 100,  // 50 clip + 100 reserve = 150 total
                 _ => int.MaxValue
             };
             reserveAmmo[weapon] = initialReserve;
@@ -593,6 +609,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => 10,
                 WeaponType.Scattergun => 8,
                 WeaponType.SniperRifle => 5,
+                WeaponType.MachineGun => 50,
                 _ => 20
             };
 
@@ -652,6 +669,7 @@ namespace RushArena.Multiplayer
                 WeaponType.PlasmaCannon => (rapid ? 0.25f : 0.50f),
                 WeaponType.Scattergun => 0.70f,
                 WeaponType.SniperRifle => 1.15f,
+                WeaponType.MachineGun => (rapid ? 0.055f : 0.085f),
                 _ => 0.15f
             };
             nextShotAt = Time.time + fireInterval;
@@ -666,6 +684,11 @@ namespace RushArena.Multiplayer
             {
                 weaponRecoilPos = new Vector3(Random.Range(-0.02f, 0.02f), 0.035f, -0.11f);
                 weaponRecoilRot = new Vector3(-8f, Random.Range(-3f, 3f), 0f);
+            }
+            else if (CurrentWeapon == WeaponType.MachineGun)
+            {
+                weaponRecoilPos = new Vector3(Random.Range(-0.02f, 0.02f), Random.Range(0.015f, 0.03f), -0.09f);
+                weaponRecoilRot = new Vector3(-6f, Random.Range(-2.5f, 2.5f), 0f);
             }
             else
             {
@@ -695,6 +718,9 @@ namespace RushArena.Multiplayer
                     break;
                 case WeaponType.SniperRifle:
                     ProceduralAudio.PlaySniper(audioSource);
+                    break;
+                case WeaponType.MachineGun:
+                    ProceduralAudio.PlayMachineGun(audioSource);
                     break;
             }
 
@@ -735,6 +761,7 @@ namespace RushArena.Multiplayer
                     WeaponType.AssaultRifle => (rapid ? 18 : 24),
                     WeaponType.PlasmaCannon => 52,
                     WeaponType.SniperRifle => 95,
+                    WeaponType.MachineGun => (rapid ? 13 : 16),
                     _ => 20
                 };
 
@@ -1028,10 +1055,16 @@ namespace RushArena.Multiplayer
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
+            AllAvatars.Remove(this);
             commands.Clear();
             if (source != null) Destroy(source);
             if (ownerCamera != null) Destroy(ownerCamera.gameObject);
             if (tpCharacter != null) Destroy(tpCharacter);
+        }
+
+        private void OnDestroy()
+        {
+            AllAvatars.Remove(this);
         }
     }
 }

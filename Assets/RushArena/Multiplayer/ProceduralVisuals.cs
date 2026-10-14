@@ -103,7 +103,7 @@ namespace RushArena.Multiplayer
                 muzzle.transform.localPosition = new Vector3(0f, 0.015f, 0.35f);
                 muzzlePoint = muzzle.transform;
             }
-            else // SniperRifle
+            else if (type == WeaponType.SniperRifle)
             {
                 root.transform.localPosition = new Vector3(0.24f, -0.22f, 0.46f);
                 root.transform.localRotation = Quaternion.identity;
@@ -125,6 +125,31 @@ namespace RushArena.Multiplayer
                 var muzzle = new GameObject("MuzzlePoint");
                 muzzle.transform.SetParent(root.transform, false);
                 muzzle.transform.localPosition = new Vector3(0f, 0.02f, 0.60f);
+                muzzlePoint = muzzle.transform;
+            }
+            else // MachineGun (Heavy Machine Gun)
+            {
+                root.transform.localPosition = new Vector3(0.24f, -0.24f, 0.44f);
+                root.transform.localRotation = Quaternion.identity;
+
+                // Heavy LMG Receiver & Carrying Handle
+                CreatePart(root.transform, "Receiver", new Vector3(0f, 0f, 0f), new Vector3(0.08f, 0.11f, 0.36f), weaponMat);
+                CreatePart(root.transform, "HeavyShroud", new Vector3(0f, 0.015f, 0.25f), new Vector3(0.06f, 0.06f, 0.24f), weaponMat);
+                CreatePart(root.transform, "BarrelCore", new Vector3(0f, 0.015f, 0.38f), new Vector3(0.032f, 0.032f, 0.18f), weaponMat);
+                CreatePart(root.transform, "HeavyMuzzle", new Vector3(0f, 0.015f, 0.48f), new Vector3(0.05f, 0.05f, 0.06f), glowMat);
+                // Side Drum Magazine
+                var drum = CreatePart(root.transform, "DrumMag", new Vector3(0.05f, -0.08f, 0.04f), new Vector3(0.12f, 0.12f, 0.08f), glowMat);
+                drum.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+                CreatePart(root.transform, "AmmoBeltGuide", new Vector3(-0.045f, -0.02f, 0.04f), new Vector3(0.03f, 0.04f, 0.06f), glowMat);
+                // Carry Handle & Stock
+                CreatePart(root.transform, "CarryHandle", new Vector3(0f, 0.09f, 0.02f), new Vector3(0.03f, 0.06f, 0.15f), weaponMat);
+                CreatePart(root.transform, "Stock", new Vector3(0f, -0.01f, -0.22f), new Vector3(0.05f, 0.10f, 0.16f), weaponMat);
+                var grip = CreatePart(root.transform, "Grip", new Vector3(0f, -0.08f, -0.09f), new Vector3(0.038f, 0.11f, 0.05f), weaponMat);
+                grip.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
+
+                var muzzle = new GameObject("MuzzlePoint");
+                muzzle.transform.SetParent(root.transform, false);
+                muzzle.transform.localPosition = new Vector3(0f, 0.015f, 0.51f);
                 muzzlePoint = muzzle.transform;
             }
 
@@ -176,6 +201,14 @@ namespace RushArena.Multiplayer
                 CreatePart(root.transform, "Barrel", new Vector3(0f, 0.02f, 0.38f), new Vector3(0.022f, 0.022f, 0.40f), weaponMat);
                 CreatePart(root.transform, "Scope", new Vector3(0f, 0.08f, 0.04f), new Vector3(0.045f, 0.045f, 0.22f), glowMat);
                 CreatePart(root.transform, "Bipod", new Vector3(0f, -0.04f, 0.24f), new Vector3(0.03f, 0.03f, 0.14f), weaponMat);
+            }
+            else if (type == WeaponType.MachineGun)
+            {
+                CreatePart(root.transform, "Body", Vector3.zero, new Vector3(0.09f, 0.11f, 0.42f), weaponMat);
+                CreatePart(root.transform, "Shroud", new Vector3(0f, 0.02f, 0.28f), new Vector3(0.06f, 0.06f, 0.24f), weaponMat);
+                CreatePart(root.transform, "MuzzleBrake", new Vector3(0f, 0.02f, 0.44f), new Vector3(0.055f, 0.055f, 0.06f), glowMat);
+                CreatePart(root.transform, "DrumMag", new Vector3(0.05f, -0.08f, 0.04f), new Vector3(0.12f, 0.12f, 0.08f), glowMat);
+                CreatePart(root.transform, "CarryHandle", new Vector3(0f, 0.09f, 0.04f), new Vector3(0.03f, 0.06f, 0.15f), weaponMat);
             }
 
             return root;

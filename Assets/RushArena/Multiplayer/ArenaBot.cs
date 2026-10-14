@@ -325,7 +325,7 @@ namespace RushArena.Multiplayer
         private void ExecuteBotFiring()
         {
             int diff = GameSettings.BotDifficultyLevel;
-            float baseBurst = weapon == WeaponType.AssaultRifle ? 0.9f : 0.5f;
+            float baseBurst = (weapon == WeaponType.AssaultRifle || weapon == WeaponType.MachineGun) ? 1.1f : 0.5f;
             float burstDur = diff switch { 0 => baseBurst * 0.6f, 2 => baseBurst * 1.4f, _ => baseBurst };
             float pauseDur = diff switch { 0 => 2.4f, 2 => 0.75f, _ => 1.4f };
 
@@ -342,6 +342,7 @@ namespace RushArena.Multiplayer
                             WeaponType.PlasmaCannon => 0.48f,
                             WeaponType.Scattergun => 0.65f,
                             WeaponType.SniperRifle => 1.25f,
+                            WeaponType.MachineGun => 0.09f,
                             _ => 0.15f
                         };
                         nextFireTime = Time.time + cadence;
@@ -398,6 +399,9 @@ namespace RushArena.Multiplayer
                 case WeaponType.SniperRifle:
                     ProceduralAudio.PlaySniper(audioSource);
                     break;
+                case WeaponType.MachineGun:
+                    ProceduralAudio.PlayMachineGun(audioSource);
+                    break;
             }
 
             // Raycast shot
@@ -415,6 +419,7 @@ namespace RushArena.Multiplayer
                     WeaponType.PlasmaCannon => 24,
                     WeaponType.Scattergun => 18,
                     WeaponType.SniperRifle => 45,
+                    WeaponType.MachineGun => 12,
                     _ => 10
                 };
                 int finalDmg = Mathf.Max(1, Mathf.RoundToInt(baseDmg * dmgMult));
