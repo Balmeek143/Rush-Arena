@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="8" result="Passed" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.2004852">
+  <test-suite type="TestSuite" id="1000" name="RUSH Arena" fullname="RUSH Arena" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.200485" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1011" name="RushArena.EditModeTests.dll" fullname="C:/Users/balme/OneDrive/Desktop/Spring potato/rush-arena/Library/ScriptAssemblies/RushArena.EditModeTests.dll" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.190257" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="5088" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1012" name="RushArena" fullname="RushArena" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.189665" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1013" name="Tests" fullname="RushArena.Tests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.189417" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="MobileInputTests" fullname="RushArena.Tests.MobileInputTests" classname="RushArena.Tests.MobileInputTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.182541" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1003" name="CancelledFingersReleaseMovementAndSprint" fullname="RushArena.Tests.MobileInputTests.CancelledFingersReleaseMovementAndSprint" methodname="CancelledFingersReleaseMovementAndSprint" classname="RushArena.Tests.MobileInputTests" runstate="Runnable" seed="325650058" result="Passed" start-time="2026-10-13 03:55:20Z" end-time="2026-10-13 03:55:21Z" duration="0.159933" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1004" name="FocusLossRequiresReleaseBeforeAcceptingNewGestures" fullname="RushArena.Tests.MobileInputTests.FocusLossRequiresReleaseBeforeAcceptingNewGestures" methodname="FocusLossRequiresReleaseBeforeAcceptingNewGestures" classname="RushArena.Tests.MobileInputTests" runstate="Runnable" seed="466234345" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.002019" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="SimultaneousMoveLookSprintAndJumpAreIndependent" fullname="RushArena.Tests.MobileInputTests.SimultaneousMoveLookSprintAndJumpAreIndependent" methodname="SimultaneousMoveLookSprintAndJumpAreIndependent" classname="RushArena.Tests.MobileInputTests" runstate="Runnable" seed="443114783" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.002329" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1005" name="MovementTests" fullname="RushArena.Tests.MovementTests" classname="RushArena.Tests.MovementTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.005308" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1009" name="BufferedJumpTriggersOnLanding" fullname="RushArena.Tests.MovementTests.BufferedJumpTriggersOnLanding" methodname="BufferedJumpTriggersOnLanding" classname="RushArena.Tests.MovementTests" runstate="Runnable" seed="109535344" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.001540" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="CoyoteJumpSucceedsAfterWalkingOffEdge" fullname="RushArena.Tests.MovementTests.CoyoteJumpSucceedsAfterWalkingOffEdge" methodname="CoyoteJumpSucceedsAfterWalkingOffEdge" classname="RushArena.Tests.MovementTests" runstate="Runnable" seed="2055203324" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.000455" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="DiagonalCannotExceedStraightSpeed" fullname="RushArena.Tests.MovementTests.DiagonalCannotExceedStraightSpeed" methodname="DiagonalCannotExceedStraightSpeed" classname="RushArena.Tests.MovementTests" runstate="Runnable" seed="79360911" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.000533" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1007" name="JumpEdgeCannotDoubleJump" fullname="RushArena.Tests.MovementTests.JumpEdgeCannotDoubleJump" methodname="JumpEdgeCannotDoubleJump" classname="RushArena.Tests.MovementTests" runstate="Runnable" seed="60209979" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.000627" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1010" name="PitchStaysWithinComfortableBounds" fullname="RushArena.Tests.MovementTests.PitchStaysWithinComfortableBounds" methodname="PitchStaysWithinComfortableBounds" classname="RushArena.Tests.MovementTests" runstate="Runnable" seed="1446242495" result="Passed" start-time="2026-10-13 03:55:21Z" end-time="2026-10-13 03:55:21Z" duration="0.000429" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: C:/Users/balme/AppData/LocalLow/RushArena/RUSH Arena\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

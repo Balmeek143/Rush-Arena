@@ -1,0 +1,5 @@
+{
+  "name": "RushArena.Runtime",
+  "rootNamespace": "RushArena",
+  "references": ["RushArena.Core", "Unity.InputSystem", "Unity.ugui", "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"]
+}

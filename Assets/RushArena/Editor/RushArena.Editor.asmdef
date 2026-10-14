@@ -1,0 +1,6 @@
+{
+  "name": "RushArena.Editor",
+  "rootNamespace": "RushArena.Editor",
+  "references": ["RushArena.Runtime", "RushArena.Multiplayer", "Fusion.Unity", "Fusion.Addons.SimpleKCC", "Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"],
+  "includePlatforms": ["Editor"]
+}

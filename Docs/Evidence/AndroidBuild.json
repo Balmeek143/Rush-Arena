@@ -1,0 +1,13 @@
+{
+  "artifact": "Builds/Android/RushArena.apk",
+  "bytes": 41927328,
+  "sha256": "14a0fccd9edc276233239d7586eeb1977bbc6a9dc3c65089002668764ba151b9",
+  "architecture": "ARM64",
+  "scriptingBackend": "IL2CPP",
+  "manifestPresent": true,
+  "deviceTest": "PENDING by user choice",
+  "package": "com.rusharena.prototype",
+  "minSdkVersion": 26,
+  "targetSdkVersion": 36,
+  "unity": "6000.3.26f1"
+}

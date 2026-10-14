@@ -1,0 +1,12 @@
+UTC: 2026-10-13T03:57:15.8591521Z
+Unity: 6000.3.26f1
+Device: H610M H V2 DDR4 (Gigabyte Technology Co., Ltd.)
+OS: Windows 11  (10.0.26200)
+Resolution: 1280x720
+Editor: False
+Rolling window; HUD and refresh allocations included. Not an input latency or network measurement.
+RUSH ARENA | M1 LOCAL | Direct3D11
+144 FPS | mean 6.96 ms | p95 7.01 ms | samples 394
+Main thread (last): 7.04 ms | GC (last): 0 B
+Speed 0.0 m/s | grounded True | target 144 FPS
+Click to capture | WASD | Shift sprint | Space jump | Esc release | F8 report

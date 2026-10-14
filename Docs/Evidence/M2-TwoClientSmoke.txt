@@ -1,0 +1,8 @@
+RUSH Arena Photon Fusion Shared Mode two-client smoke
+Date: 2026-10-14
+Build: Windows development player, Unity 6000.3.26f1
+Room: hidden named development room (unique test name omitted)
+Client 1: PASS players=2;avatars=2
+Client 2: PASS players=2;avatars=2
+Scope: both clients connected through Photon Cloud and independently observed two session players and two spawned network avatars.
+Not covered: human movement feel, sustained performance, physical Android, late join, disconnect/rejoin, ten-client capacity.

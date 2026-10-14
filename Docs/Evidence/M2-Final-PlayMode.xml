@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="5" result="Passed" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.0904131">
+  <test-suite type="TestSuite" id="1013" name="RUSH Arena" fullname="RUSH Arena" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.090413" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1007" name="RushArena.PlayModeTests.dll" fullname="C:/Users/balme/OneDrive/Desktop/Spring potato/rush-arena/Library/ScriptAssemblies/RushArena.PlayModeTests.dll" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.083154" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="20732" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1008" name="RushArena" fullname="RushArena" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.082744" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1009" name="Tests" fullname="RushArena.Tests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.082549" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="MotorPhysicsTests" fullname="RushArena.Tests.MotorPhysicsTests" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.081672" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1004" name="CeilingStopsJumpAndAllowsLanding" fullname="RushArena.Tests.MotorPhysicsTests.CeilingStopsJumpAndAllowsLanding" methodname="CeilingStopsJumpAndAllowsLanding" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" seed="585435891" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.057457" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1005" name="FrameRateAndLookDeltaRemainStable" fullname="RushArena.Tests.MotorPhysicsTests.FrameRateAndLookDeltaRemainStable" methodname="FrameRateAndLookDeltaRemainStable" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" seed="215561302" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.007321" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="GroundAndWallCollisionPreventPenetration" fullname="RushArena.Tests.MotorPhysicsTests.GroundAndWallCollisionPreventPenetration" methodname="GroundAndWallCollisionPreventPenetration" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" seed="829774028" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.003299" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1003" name="JumpReturnsToGroundWithoutAutomaticRepeat" fullname="RushArena.Tests.MotorPhysicsTests.JumpReturnsToGroundWithoutAutomaticRepeat" methodname="JumpReturnsToGroundWithoutAutomaticRepeat" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" seed="325033747" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.002029" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="SmallStepCanBeClimbed" fullname="RushArena.Tests.MotorPhysicsTests.SmallStepCanBeClimbed" methodname="SmallStepCanBeClimbed" classname="RushArena.Tests.MotorPhysicsTests" runstate="Runnable" seed="439416973" result="Passed" start-time="2026-10-13 19:59:46Z" end-time="2026-10-13 19:59:46Z" duration="0.001720" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: C:/Users/balme/AppData/LocalLow/RushArena/RUSH Arena\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

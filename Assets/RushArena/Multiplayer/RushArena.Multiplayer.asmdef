@@ -1,0 +1,11 @@
+{
+  "name": "RushArena.Multiplayer",
+  "rootNamespace": "RushArena.Multiplayer",
+  "references": [
+    "RushArena.Core",
+    "RushArena.Runtime",
+    "Unity.InputSystem",
+    "Fusion.Unity",
+    "Fusion.Addons.SimpleKCC"
+  ]
+}

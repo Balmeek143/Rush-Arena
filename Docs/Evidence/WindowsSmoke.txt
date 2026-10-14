@@ -1,0 +1,11 @@
+Result: PASS
+Unity: 6000.3.26f1
+GPU: AMD Radeon RX 6600
+Walk 1s: 6.674m
+Sprint 0.5s: 5.174m
+Jump apex: 1.406m
+Grounded: True
+Yaw: 90.00
+Rendered pixels: 921600/921600; magenta: 0
+Screenshot: C:/Users/balme/AppData/LocalLow/RushArena/RUSH Arena\M1Smoke\arena.png
+URP offscreen scene capture; overlay HUD excluded. Scripted smoke only; human feel and physical mobile tests are pending.

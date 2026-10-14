@@ -1,0 +1,5 @@
+{
+  "name": "RushArena.Core",
+  "rootNamespace": "RushArena.Core",
+  "noEngineReferences": true
+}
