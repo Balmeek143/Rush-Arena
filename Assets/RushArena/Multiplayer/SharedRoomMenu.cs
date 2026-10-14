@@ -146,7 +146,7 @@ namespace RushArena.Multiplayer
                 return;
             }
 
-            GUILayout.BeginArea(new Rect(15, 15, 390, 290), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(15, 15, 390, 330), GUI.skin.box);
             var titleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontStyle = FontStyle.Bold,
@@ -180,7 +180,19 @@ namespace RushArena.Multiplayer
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Mouse Sensitivity: {RushArena.Runtime.GameSettings.MouseSensitivity:0.0}x", GUILayout.Width(180));
+            GUILayout.Label("Controls Mode:", GUILayout.Width(110));
+            bool isTouch = RushArena.Runtime.GameSettings.TouchControlsEnabled;
+            Color prevBg = GUI.backgroundColor;
+            GUI.backgroundColor = isTouch ? new Color(0.2f, 0.85f, 0.4f) : new Color(0.4f, 0.45f, 0.55f);
+            if (GUILayout.Button(isTouch ? "📱 Mobile / iPad Touch Controls" : "⌨ Desktop Keyboard & Mouse", GUILayout.Height(28)))
+            {
+                RushArena.Runtime.GameSettings.TouchControlsEnabled = !isTouch;
+            }
+            GUI.backgroundColor = prevBg;
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Look Sensitivity: {RushArena.Runtime.GameSettings.MouseSensitivity:0.0}x", GUILayout.Width(180));
             float newSens = GUILayout.HorizontalSlider(RushArena.Runtime.GameSettings.MouseSensitivity, 0.2f, 3.5f);
             if (Mathf.Abs(newSens - RushArena.Runtime.GameSettings.MouseSensitivity) > 0.02f) RushArena.Runtime.GameSettings.MouseSensitivity = newSens;
             GUILayout.EndHorizontal();

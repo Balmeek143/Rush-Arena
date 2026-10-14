@@ -10,7 +10,7 @@ namespace RushArena.Input
         public static bool IsSettingsOpen;
         private static int suppressLookFrames;
         public float DegreesPerPixel = 0.035f;
-        public bool IsActive => Application.isFocused && Cursor.lockState == CursorLockMode.Locked && !IsSettingsOpen;
+        public bool IsActive => Application.isFocused && !IsSettingsOpen && (RushArena.Runtime.GameSettings.TouchControlsEnabled || Cursor.lockState == CursorLockMode.Locked);
         public PlayerCommand Sample()
         {
             var keyboard = Keyboard.current;
@@ -24,10 +24,10 @@ namespace RushArena.Input
             {
                 return default;
             }
-            // Clicking captures the pointer but discards initial frames to eliminate cursor-center warp spikes
+            // Clicking captures the pointer in desktop mode, but touch mode stays unlocked
             if (!IsActive)
             {
-                if (Application.isFocused && mouse != null && mouse.leftButton.wasPressedThisFrame && !IsSettingsOpen)
+                if (!RushArena.Runtime.GameSettings.TouchControlsEnabled && Application.isFocused && mouse != null && mouse.leftButton.wasPressedThisFrame && !IsSettingsOpen)
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;
@@ -37,20 +37,46 @@ namespace RushArena.Input
                 return default;
             }
             PlayerCommand command = default;
+
+            if (RushArena.Runtime.GameSettings.TouchControlsEnabled)
+            {
+                VirtualTouchControls.UpdateInput();
+
+                command.MoveX = VirtualTouchControls.MoveX;
+                command.MoveY = VirtualTouchControls.MoveY;
+                if (VirtualTouchControls.Fire) command.Fire = true;
+                if (VirtualTouchControls.ConsumeJump()) command.JumpPressed = true;
+                if (VirtualTouchControls.ConsumeReload()) command.ReloadPressed = true;
+                if (VirtualTouchControls.ConsumeSwitch())
+                {
+                    command.SwitchWeapon = true;
+                    command.WeaponScroll = 1;
+                }
+                Vector2 touchLook = VirtualTouchControls.ConsumeLook();
+                command.LookX += touchLook.x;
+                command.LookY += touchLook.y;
+            }
+
             if (keyboard != null)
             {
-                command.MoveX = (keyboard.dKey.isPressed ? 1 : 0) - (keyboard.aKey.isPressed ? 1 : 0);
-                command.MoveY = (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0);
-                command.Sprint = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
-                command.JumpPressed = keyboard.spaceKey.wasPressedThisFrame;
-                command.ReloadPressed = keyboard.rKey.wasPressedThisFrame;
+                float keyX = (keyboard.dKey.isPressed ? 1 : 0) - (keyboard.aKey.isPressed ? 1 : 0);
+                float keyY = (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0);
+                if (Mathf.Abs(keyX) > 0.01f || Mathf.Abs(keyY) > 0.01f)
+                {
+                    command.MoveX = keyX;
+                    command.MoveY = keyY;
+                }
+                if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed) command.Sprint = true;
+                if (keyboard.spaceKey.wasPressedThisFrame) command.JumpPressed = true;
+                if (keyboard.rKey.wasPressedThisFrame) command.ReloadPressed = true;
                 if (keyboard.qKey.wasPressedThisFrame)
                 {
                     command.SwitchWeapon = true;
                     command.WeaponScroll = 1;
                 }
             }
-            if (mouse != null)
+
+            if (!RushArena.Runtime.GameSettings.TouchControlsEnabled && mouse != null)
             {
                 Vector2 delta = mouse.delta.ReadValue();
                 if (suppressLookFrames > 0)
@@ -66,9 +92,9 @@ namespace RushArena.Input
                 }
 
                 float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.MouseSensitivity;
-                command.LookX = delta.x * sens;
-                command.LookY = delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
-                command.Fire = mouse.leftButton.isPressed && Time.unscaledTime >= SuppressFireUntil;
+                command.LookX += delta.x * sens;
+                command.LookY += delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
+                command.Fire = command.Fire || (mouse.leftButton.isPressed && Time.unscaledTime >= SuppressFireUntil);
                 command.ZoomPressed = mouse.rightButton.isPressed;
 
                 float scroll = mouse.scroll.ReadValue().y;

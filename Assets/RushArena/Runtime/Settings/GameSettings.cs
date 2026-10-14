@@ -39,5 +39,24 @@ namespace RushArena.Runtime
             get => PlayerPrefs.GetInt("Rush_InvertY", 0) == 1;
             set { PlayerPrefs.SetInt("Rush_InvertY", value ? 1 : 0); PlayerPrefs.Save(); }
         }
+
+        public static bool TouchControlsEnabled
+        {
+            get
+            {
+                if (!PlayerPrefs.HasKey("Rush_TouchControls"))
+                {
+                    bool isMobile = Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld;
+                    PlayerPrefs.SetInt("Rush_TouchControls", isMobile ? 1 : 0);
+                    PlayerPrefs.Save();
+                }
+                return PlayerPrefs.GetInt("Rush_TouchControls", 0) == 1;
+            }
+            set
+            {
+                PlayerPrefs.SetInt("Rush_TouchControls", value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
     }
 }

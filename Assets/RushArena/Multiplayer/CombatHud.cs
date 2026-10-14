@@ -102,10 +102,46 @@ namespace RushArena.Multiplayer
                 }
                 else
                 {
+                    if (!GameSettings.TouchControlsEnabled)
+                    {
+                        Cursor.lockState = CursorLockMode.Locked;
+                        Cursor.visible = false;
+                        RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
+                    }
+                    else
+                    {
+                        Cursor.lockState = CursorLockMode.None;
+                        Cursor.visible = true;
+                    }
+                }
+            }
+
+            // Mobile / iPad Touch Controls Toggle Button
+            bool touchOn = GameSettings.TouchControlsEnabled;
+            string touchBtnLabel = touchOn ? "📱 TOUCH: ON" : "📱 TOUCH: OFF";
+            Color prevBg = GUI.backgroundColor;
+            GUI.backgroundColor = touchOn ? new Color(0.2f, 0.85f, 0.4f, 0.95f) : new Color(0.35f, 0.40f, 0.50f, 0.85f);
+            if (GUI.Button(new Rect(135f, 15f, 155f, 32f), touchBtnLabel))
+            {
+                GameSettings.TouchControlsEnabled = !touchOn;
+                if (GameSettings.TouchControlsEnabled)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
+                else
+                {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;
-                    RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
+                    RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.20f;
                 }
+            }
+            GUI.backgroundColor = prevBg;
+
+            // Scoreboard button
+            if (GUI.Button(new Rect(300f, 15f, 95f, 32f), "🏆 SCORES"))
+            {
+                showScoreboard = !showScoreboard;
             }
 
             if (avatar.IsDead)
@@ -128,9 +164,9 @@ namespace RushArena.Multiplayer
                 DrawSettingsModal();
             }
 
-            if (Application.isMobilePlatform)
+            if (GameSettings.TouchControlsEnabled && !avatar.IsDead)
             {
-                DrawMobileTouchControls();
+                RushArena.Input.VirtualTouchControls.DrawGUI();
             }
         }
 
@@ -453,14 +489,37 @@ namespace RushArena.Multiplayer
                 AdjustBotsToTarget(GameSettings.DesiredBotCount);
             }
 
-            GUILayout.Space(14);
+            GUILayout.Space(8);
+
+            // Touch Controls toggle option
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Mobile / iPad Controls:", GUILayout.Width(170));
+            bool isTouch = GameSettings.TouchControlsEnabled;
+            Color curBg = GUI.backgroundColor;
+            GUI.backgroundColor = isTouch ? new Color(0.2f, 0.85f, 0.4f) : new Color(0.45f, 0.5f, 0.6f);
+            if (GUILayout.Button(isTouch ? "📱 TOUCH CONTROLS: ON" : "📱 TOUCH CONTROLS: OFF", GUILayout.Height(28)))
+            {
+                GameSettings.TouchControlsEnabled = !isTouch;
+            }
+            GUI.backgroundColor = curBg;
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(12);
             if (GUILayout.Button("RESUME MATCH", GUILayout.Height(36)))
             {
                 showSettings = false;
                 IsSettingsOpen = false;
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
+                if (!GameSettings.TouchControlsEnabled)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
+                    RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
+                }
+                else
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
             }
 
             GUILayout.EndArea();
