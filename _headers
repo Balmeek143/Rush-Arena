@@ -1,0 +1,14 @@
+/*
+  Access-Control-Allow-Origin: *
+
+/Build/*.loader.js
+  Content-Type: application/javascript
+
+/Build/*.wasm.unityweb
+  Content-Type: application/wasm
+
+/Build/*.framework.js.unityweb
+  Content-Type: application/javascript
+
+/Build/*.data.unityweb
+  Content-Type: application/octet-stream
