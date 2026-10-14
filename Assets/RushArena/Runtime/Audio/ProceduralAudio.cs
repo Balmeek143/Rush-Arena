@@ -47,10 +47,32 @@ namespace RushArena.Runtime.Audio
             Play(source != null ? source : GetGlobalSource(), plasmaClip, 0.85f, Random.Range(0.92f, 1.08f));
         }
 
+        private static AudioClip sniperClip;
+        private static AudioClip sniperZoomClip;
+        private static AudioClip weaponDepletedClip;
+
         public static void PlayScattergun(AudioSource source = null)
         {
             if (scatterClip == null) scatterClip = CreateScattergunClip();
             Play(source != null ? source : GetGlobalSource(), scatterClip, 0.95f, Random.Range(0.90f, 1.05f));
+        }
+
+        public static void PlaySniper(AudioSource source = null)
+        {
+            if (sniperClip == null) sniperClip = CreateSniperClip();
+            Play(source != null ? source : GetGlobalSource(), sniperClip, 1.0f, Random.Range(0.97f, 1.03f));
+        }
+
+        public static void PlaySniperZoom(AudioSource source = null)
+        {
+            if (sniperZoomClip == null) sniperZoomClip = CreateSniperZoomClip();
+            Play(source != null ? source : GetGlobalSource(), sniperZoomClip, 0.7f, 1f);
+        }
+
+        public static void PlayWeaponDepleted(AudioSource source = null)
+        {
+            if (weaponDepletedClip == null) weaponDepletedClip = CreateWeaponDepletedClip();
+            Play(source != null ? source : GetGlobalSource(), weaponDepletedClip, 0.85f, 1f);
         }
 
         public static void PlayReload(AudioSource source = null)
@@ -285,6 +307,61 @@ namespace RushArena.Runtime.Audio
                 data[i] = Mathf.Clamp(tone * envelope, -1f, 1f);
             }
             var clip = AudioClip.Create("WeaponPickup", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateSniperClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.40f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 16f);
+                float crack = (Random.value * 2f - 1f) * 0.9f;
+                float thud = Mathf.Sin(2f * Mathf.PI * (140f - t * 200f) * t) * 0.7f;
+                data[i] = Mathf.Clamp((crack + thud) * envelope, -1f, 1f);
+            }
+            var clip = AudioClip.Create("SniperShot", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateSniperZoomClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.12f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Sin((t / duration) * Mathf.PI);
+                float freq = Mathf.Lerp(600f, 1200f, t / duration);
+                data[i] = Mathf.Clamp(Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.6f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("SniperZoom", samples, 1, sampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        private static AudioClip CreateWeaponDepletedClip()
+        {
+            int sampleRate = 44100;
+            float duration = 0.22f;
+            int samples = (int)(sampleRate * duration);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-t * 22f);
+                float freq = Mathf.Lerp(400f, 120f, t / duration);
+                data[i] = Mathf.Clamp(Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.7f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("WeaponDepleted", samples, 1, sampleRate, false);
             clip.SetData(data, 0);
             return clip;
         }

@@ -94,8 +94,7 @@ namespace RushArena.Multiplayer
             StartNewMatch();
         }
 
-        [Rpc(RpcSources.All, RpcTargets.All)]
-        public void RpcReportKill(string killerName, string victimName, string weaponName)
+        public void ReportKill(string killerName, string victimName, string weaponName)
         {
             KillFeed.Add(new KillFeedEntry
             {

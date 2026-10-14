@@ -6,8 +6,10 @@ namespace RushArena.Input
 {
     public sealed class DesktopInput : IPlayerInput
     {
+        public static float SuppressFireUntil;
+        public static bool IsSettingsOpen;
         public float DegreesPerPixel = 0.09f;
-        public bool IsActive => Application.isFocused && Cursor.lockState == CursorLockMode.Locked;
+        public bool IsActive => Application.isFocused && Cursor.lockState == CursorLockMode.Locked && !IsSettingsOpen;
         public PlayerCommand Sample()
         {
             var keyboard = Keyboard.current;
@@ -17,13 +19,18 @@ namespace RushArena.Input
                 Clear();
                 return default;
             }
-            // Clicking captures the pointer but discards that frame's stale mouse delta.
+            if (IsSettingsOpen)
+            {
+                return default;
+            }
+            // Clicking captures the pointer but discards that frame's fire/delta
             if (!IsActive)
             {
-                if (Application.isFocused && mouse != null && mouse.leftButton.wasPressedThisFrame)
+                if (Application.isFocused && mouse != null && mouse.leftButton.wasPressedThisFrame && !IsSettingsOpen)
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;
+                    SuppressFireUntil = Time.unscaledTime + 0.15f;
                 }
                 return default;
             }
@@ -34,6 +41,7 @@ namespace RushArena.Input
                 command.MoveY = (keyboard.wKey.isPressed ? 1 : 0) - (keyboard.sKey.isPressed ? 1 : 0);
                 command.Sprint = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
                 command.JumpPressed = keyboard.spaceKey.wasPressedThisFrame;
+                command.ReloadPressed = keyboard.rKey.wasPressedThisFrame;
                 if (keyboard.qKey.wasPressedThisFrame)
                 {
                     command.SwitchWeapon = true;
@@ -46,7 +54,8 @@ namespace RushArena.Input
                 float sens = DegreesPerPixel * RushArena.Runtime.GameSettings.MouseSensitivity;
                 command.LookX = delta.x * sens;
                 command.LookY = delta.y * sens * (RushArena.Runtime.GameSettings.InvertY ? -1f : 1f);
-                command.Fire = mouse.leftButton.isPressed;
+                command.Fire = mouse.leftButton.isPressed && Time.unscaledTime >= SuppressFireUntil;
+                command.ZoomPressed = mouse.rightButton.isPressed;
 
                 float scroll = mouse.scroll.ReadValue().y;
                 if (scroll > 0.05f)

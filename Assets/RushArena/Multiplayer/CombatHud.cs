@@ -11,6 +11,8 @@ namespace RushArena.Multiplayer
     // and an in-game Settings modal for mouse sensitivity, FOV, volume, bot count, and difficulty.
     public sealed class CombatHud : MonoBehaviour
     {
+        public static bool IsSettingsOpen { get; private set; }
+
         private SharedPlayerAvatar avatar;
         private float hitMarkerUntil;
         private float shotMarkerUntil;
@@ -41,6 +43,8 @@ namespace RushArena.Multiplayer
 
         private void Update()
         {
+            IsSettingsOpen = showSettings;
+            RushArena.Input.DesktopInput.IsSettingsOpen = showSettings;
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
@@ -48,6 +52,8 @@ namespace RushArena.Multiplayer
                 if (keyboard.escapeKey.wasPressedThisFrame)
                 {
                     showSettings = !showSettings;
+                    IsSettingsOpen = showSettings;
+                    RushArena.Input.DesktopInput.IsSettingsOpen = showSettings;
                     if (showSettings)
                     {
                         Cursor.lockState = CursorLockMode.None;
@@ -57,6 +63,7 @@ namespace RushArena.Multiplayer
                     {
                         Cursor.lockState = CursorLockMode.Locked;
                         Cursor.visible = false;
+                        RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
                     }
                 }
             }
@@ -66,7 +73,15 @@ namespace RushArena.Multiplayer
         {
             if (avatar == null) return;
 
-            DrawCrosshair();
+            if (avatar.IsScoped && avatar.CurrentWeapon == WeaponType.SniperRifle)
+            {
+                DrawSniperScopeOverlay();
+            }
+            else
+            {
+                DrawCrosshair();
+            }
+
             DrawReloadIndicator();
             DrawPlayerStatus();
             DrawWeaponStatus();
@@ -79,6 +94,7 @@ namespace RushArena.Multiplayer
             if (GUI.Button(new Rect(15f, 15f, 110f, 32f), showSettings ? "✕ CLOSE" : "⚙ SETTINGS"))
             {
                 showSettings = !showSettings;
+                IsSettingsOpen = showSettings;
                 if (showSettings)
                 {
                     Cursor.lockState = CursorLockMode.None;
@@ -88,6 +104,7 @@ namespace RushArena.Multiplayer
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;
+                    RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
                 }
             }
 
@@ -201,10 +218,11 @@ namespace RushArena.Multiplayer
                 WeaponType.AssaultRifle => "ASSAULT RIFLE",
                 WeaponType.PlasmaCannon => "PLASMA CANNON",
                 WeaponType.Scattergun => "SCATTERGUN",
+                WeaponType.SniperRifle => "PRECISION SNIPER",
                 _ => "WEAPON"
             };
 
-            string ammoText = avatar.IsReloading ? "RELOADING..." : $"{avatar.AmmoInClip:00} / {avatar.MaxClip:00}";
+            string ammoText = avatar.IsReloading ? "RELOADING..." : $"{avatar.AmmoInClip:00} / {avatar.ReserveAmmoDisplay}";
 
             GUI.Label(new Rect(Screen.width - w - 10f, Screen.height - h - 14f, 220f, 22f), weaponName, BoldLabel(new Color(1f, 0.8f, 0.25f)));
             GUI.Label(new Rect(Screen.width - w - 10f, Screen.height - h + 10f, 220f, 28f), ammoText, LargeLabel(avatar.IsReloading ? Color.yellow : Color.white));
@@ -356,6 +374,11 @@ namespace RushArena.Multiplayer
             float h = 420f;
             var rect = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height * 0.5f - h * 0.5f, w, h);
 
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
+            {
+                // Eat mouse click so it never triggers weapon fire
+            }
+
             DrawFilledRect(rect, new Color(0.05f, 0.08f, 0.14f, 0.97f));
             DrawOutlineRect(rect, new Color(0.2f, 0.75f, 1f, 0.9f), 2);
 
@@ -433,8 +456,10 @@ namespace RushArena.Multiplayer
             if (GUILayout.Button("RESUME MATCH", GUILayout.Height(36)))
             {
                 showSettings = false;
+                IsSettingsOpen = false;
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
+                RushArena.Input.DesktopInput.SuppressFireUntil = Time.unscaledTime + 0.18f;
             }
 
             GUILayout.EndArea();
@@ -484,6 +509,65 @@ namespace RushArena.Multiplayer
 
             float restartIn = Mathf.Max(0f, (float)SharedMatchManager.Instance.RestartTimer.RemainingTime(avatar.Runner));
             GUI.Label(new Rect(rect.x, rect.y + 115f, rect.width, 28f), $"Next match starting in {restartIn:0}s...", SmallLabel(Color.white, TextAnchor.MiddleCenter));
+        }
+
+        private void DrawSniperScopeOverlay()
+        {
+            float w = Screen.width;
+            float h = Screen.height;
+            float scopeDiameter = Mathf.Min(w, h) * 0.82f;
+            float scopeRadius = scopeDiameter * 0.5f;
+            Vector2 center = new Vector2(w * 0.5f, h * 0.5f);
+
+            // Black mask around the circular scope
+            float sideWidth = Mathf.Max(0f, (w - scopeDiameter) * 0.5f);
+            if (sideWidth > 0f)
+            {
+                DrawFilledRect(new Rect(0, 0, sideWidth, h), Color.black);
+                DrawFilledRect(new Rect(w - sideWidth, 0, sideWidth, h), Color.black);
+            }
+            float topHeight = Mathf.Max(0f, (h - scopeDiameter) * 0.5f);
+            if (topHeight > 0f)
+            {
+                DrawFilledRect(new Rect(0, 0, w, topHeight), Color.black);
+                DrawFilledRect(new Rect(0, h - topHeight, w, topHeight), Color.black);
+            }
+
+            // Outer circular scope frame / vignette ring
+            DrawOutlineRect(new Rect(center.x - scopeRadius, center.y - scopeRadius, scopeDiameter, scopeDiameter), new Color(0.1f, 0.9f, 0.4f, 0.7f), 3);
+
+            // Sniper reticle crosshairs (thin lines with gap in center)
+            Color reticleColor = new Color(0.1f, 0.95f, 0.35f, 0.85f);
+            DrawFilledRect(new Rect(center.x - scopeRadius + 20f, center.y - 1f, scopeRadius - 35f, 2f), reticleColor);
+            DrawFilledRect(new Rect(center.x + 15f, center.y - 1f, scopeRadius - 35f, 2f), reticleColor);
+            DrawFilledRect(new Rect(center.x - 1f, center.y - scopeRadius + 20f, 2f, scopeRadius - 35f), reticleColor);
+            DrawFilledRect(new Rect(center.x - 1f, center.y + 15f, 2f, scopeRadius - 35f), reticleColor);
+
+            // Center precision red dot
+            DrawFilledRect(new Rect(center.x - 2f, center.y - 2f, 4f, 4f), new Color(1f, 0.2f, 0.2f, 0.9f));
+
+            // Mil-dots / tick markings on crosshairs
+            for (int d = 1; d <= 4; d++)
+            {
+                float offset = d * 35f;
+                DrawFilledRect(new Rect(center.x + offset - 1f, center.y - 4f, 2f, 8f), reticleColor);
+                DrawFilledRect(new Rect(center.x - offset - 1f, center.y - 4f, 2f, 8f), reticleColor);
+                DrawFilledRect(new Rect(center.x - 4f, center.y + offset - 1f, 8f, 2f), reticleColor);
+                DrawFilledRect(new Rect(center.x - 4f, center.y - offset - 1f, 8f, 2f), reticleColor);
+            }
+
+            // Tactical Scope HUD Overlay Data
+            var hudStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                fontSize = 13,
+                alignment = TextAnchor.MiddleLeft,
+                normal = { textColor = new Color(0.1f, 0.95f, 0.35f) }
+            };
+            GUI.Label(new Rect(center.x - scopeRadius + 40f, center.y - scopeRadius + 30f, 180f, 22f), "OPTIC: 8.0X MAG", hudStyle);
+            GUI.Label(new Rect(center.x - scopeRadius + 40f, center.y - scopeRadius + 50f, 180f, 22f), "RANGEFINDER: ACTIVE", hudStyle);
+            GUI.Label(new Rect(center.x + scopeRadius - 160f, center.y - scopeRadius + 30f, 140f, 22f), "ELEVATION: 0.00 MIL", hudStyle);
+            GUI.Label(new Rect(center.x + scopeRadius - 160f, center.y - scopeRadius + 50f, 140f, 22f), "WIND: 0.0 M/S", hudStyle);
         }
 
         private void DrawScoreboard()

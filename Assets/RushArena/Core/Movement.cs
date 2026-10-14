@@ -23,6 +23,8 @@ namespace RushArena.Core
         public float MoveX, MoveY, LookX, LookY;
         public bool Sprint, JumpPressed, Fire, SwitchWeapon;
         public int WeaponScroll;
+        public bool ReloadPressed;
+        public bool ZoomPressed;
     }
 
     public readonly struct MotionDelta

@@ -341,6 +341,7 @@ namespace RushArena.Multiplayer
                             WeaponType.AssaultRifle => 0.14f,
                             WeaponType.PlasmaCannon => 0.48f,
                             WeaponType.Scattergun => 0.65f,
+                            WeaponType.SniperRifle => 1.25f,
                             _ => 0.15f
                         };
                         nextFireTime = Time.time + cadence;
@@ -394,6 +395,9 @@ namespace RushArena.Multiplayer
                 case WeaponType.Scattergun:
                     ProceduralAudio.PlayScattergun(audioSource);
                     break;
+                case WeaponType.SniperRifle:
+                    ProceduralAudio.PlaySniper(audioSource);
+                    break;
             }
 
             // Raycast shot
@@ -410,6 +414,7 @@ namespace RushArena.Multiplayer
                     WeaponType.AssaultRifle => 10,
                     WeaponType.PlasmaCannon => 24,
                     WeaponType.Scattergun => 18,
+                    WeaponType.SniperRifle => 45,
                     _ => 10
                 };
                 int finalDmg = Mathf.Max(1, Mathf.RoundToInt(baseDmg * dmgMult));
@@ -582,7 +587,7 @@ namespace RushArena.Multiplayer
             // Report to match manager kill feed
             if (SharedMatchManager.Instance != null)
             {
-                SharedMatchManager.Instance.RpcReportKill(killerName, $"[BOT] {botName}", weaponUsed.ToString());
+                SharedMatchManager.Instance.ReportKill(killerName, $"[BOT] {botName}", weaponUsed.ToString());
             }
 
             // Award kill to human player if applicable

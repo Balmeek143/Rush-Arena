@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/RushArena/Scenes/ArenaM1.unity
     guid: 7c4c6ea21a40525d8f4c813e3b31b843
+  - enabled: 1
+    path: Assets/RushArena/Scenes/ArenaShared.unity
+    guid: c4a7229b680a36f4c84c5519df14c86e
   m_configObjects: {}

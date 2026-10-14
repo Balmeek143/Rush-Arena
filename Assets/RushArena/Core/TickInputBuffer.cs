@@ -15,6 +15,8 @@ namespace RushArena.Core
             pending.Fire = frame.Fire;
             pending.SwitchWeapon |= frame.SwitchWeapon;
             pending.WeaponScroll += frame.WeaponScroll;
+            pending.ReloadPressed |= frame.ReloadPressed;
+            pending.ZoomPressed = frame.ZoomPressed;
             pending.LookX += frame.LookX;
             pending.LookY += frame.LookY;
             pending.JumpPressed |= frame.JumpPressed;
@@ -28,6 +30,7 @@ namespace RushArena.Core
             pending.JumpPressed = false;
             pending.SwitchWeapon = false;
             pending.WeaponScroll = 0;
+            pending.ReloadPressed = false;
             return command;
         }
 

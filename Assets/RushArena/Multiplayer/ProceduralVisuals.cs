@@ -81,7 +81,7 @@ namespace RushArena.Multiplayer
                 muzzle.transform.localPosition = new Vector3(0f, 0f, 0.36f);
                 muzzlePoint = muzzle.transform;
             }
-            else // Scattergun (Shotgun)
+            else if (type == WeaponType.Scattergun)
             {
                 root.transform.localPosition = new Vector3(0.22f, -0.20f, 0.44f);
                 root.transform.localRotation = Quaternion.identity;
@@ -101,6 +101,30 @@ namespace RushArena.Multiplayer
                 var muzzle = new GameObject("MuzzlePoint");
                 muzzle.transform.SetParent(root.transform, false);
                 muzzle.transform.localPosition = new Vector3(0f, 0.015f, 0.35f);
+                muzzlePoint = muzzle.transform;
+            }
+            else // SniperRifle
+            {
+                root.transform.localPosition = new Vector3(0.24f, -0.22f, 0.46f);
+                root.transform.localRotation = Quaternion.identity;
+
+                // Precision sniper chassis & long barrel
+                CreatePart(root.transform, "Receiver", new Vector3(0f, 0f, 0f), new Vector3(0.06f, 0.09f, 0.36f), weaponMat);
+                CreatePart(root.transform, "PrecisionBarrel", new Vector3(0f, 0.02f, 0.36f), new Vector3(0.022f, 0.022f, 0.44f), weaponMat);
+                CreatePart(root.transform, "MuzzleBrake", new Vector3(0f, 0.02f, 0.58f), new Vector3(0.038f, 0.038f, 0.06f), glowMat);
+                // Optic Scope
+                var scope = CreatePart(root.transform, "ScopeHousing", new Vector3(0f, 0.095f, 0.04f), new Vector3(0.045f, 0.045f, 0.22f), weaponMat);
+                CreatePart(scope.transform, "ScopeLensFront", new Vector3(0f, 0f, 0.11f), new Vector3(0.048f, 0.048f, 0.01f), glowMat);
+                CreatePart(scope.transform, "ScopeLensBack", new Vector3(0f, 0f, -0.11f), new Vector3(0.042f, 0.042f, 0.01f), glowMat);
+                CreatePart(root.transform, "ScopeMount", new Vector3(0f, 0.06f, 0.04f), new Vector3(0.035f, 0.035f, 0.14f), weaponMat);
+                CreatePart(root.transform, "BipodFolded", new Vector3(0f, -0.04f, 0.28f), new Vector3(0.03f, 0.025f, 0.16f), weaponMat);
+                CreatePart(root.transform, "Stock", new Vector3(0f, 0.01f, -0.22f), new Vector3(0.042f, 0.08f, 0.18f), weaponMat);
+                var grip = CreatePart(root.transform, "Grip", new Vector3(0f, -0.08f, -0.08f), new Vector3(0.036f, 0.11f, 0.05f), weaponMat);
+                grip.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
+
+                var muzzle = new GameObject("MuzzlePoint");
+                muzzle.transform.SetParent(root.transform, false);
+                muzzle.transform.localPosition = new Vector3(0f, 0.02f, 0.60f);
                 muzzlePoint = muzzle.transform;
             }
 
@@ -145,6 +169,13 @@ namespace RushArena.Multiplayer
                 CreatePart(root.transform, "Barrels", new Vector3(0f, 0.02f, 0.22f), new Vector3(0.06f, 0.03f, 0.26f), weaponMat);
                 CreatePart(root.transform, "Shield", new Vector3(0f, 0.05f, 0.15f), new Vector3(0.09f, 0.03f, 0.20f), glowMat);
                 CreatePart(root.transform, "Pump", new Vector3(0f, -0.04f, 0.12f), new Vector3(0.06f, 0.05f, 0.12f), weaponMat);
+            }
+            else if (type == WeaponType.SniperRifle)
+            {
+                CreatePart(root.transform, "Body", Vector3.zero, new Vector3(0.06f, 0.08f, 0.44f), weaponMat);
+                CreatePart(root.transform, "Barrel", new Vector3(0f, 0.02f, 0.38f), new Vector3(0.022f, 0.022f, 0.40f), weaponMat);
+                CreatePart(root.transform, "Scope", new Vector3(0f, 0.08f, 0.04f), new Vector3(0.045f, 0.045f, 0.22f), glowMat);
+                CreatePart(root.transform, "Bipod", new Vector3(0f, -0.04f, 0.24f), new Vector3(0.03f, 0.03f, 0.14f), weaponMat);
             }
 
             return root;

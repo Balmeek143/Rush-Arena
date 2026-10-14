@@ -12,19 +12,22 @@ namespace RushArena.Multiplayer
         SpeedBoost = 2,
         WeaponAssaultRifle = 3,
         WeaponPlasmaCannon = 4,
-        WeaponScattergun = 5
+        WeaponScattergun = 5,
+        WeaponSniperRifle = 6
     }
 
-    // Floating 3D holographic weapon drops and tactical powerups on pedestals with automatic respawn timers.
+    // Floating 3D holographic weapon drops and tactical powerups.
+    // Dynamically relocates to randomized tactical arena waypoints upon collection and respawn.
     public sealed class ArenaPowerup : MonoBehaviour
     {
         public static readonly List<ArenaPowerup> Active = new List<ArenaPowerup>();
 
         [SerializeField] private PowerupType type = PowerupType.RapidFire;
-        [SerializeField] private float respawnDuration = 18f;
+        [SerializeField] private float respawnDuration = 14f;
         private float availableAt;
         private Transform iconRoot;
-        private Renderer[] visualRenderers;
+        private Material baseMaterial;
+        private Material accentMat;
 
         public PowerupType Type => type;
         public bool IsAvailable => Time.time >= availableAt;
@@ -34,6 +37,7 @@ namespace RushArena.Multiplayer
             PowerupType.WeaponAssaultRifle => "ASSAULT RIFLE",
             PowerupType.WeaponPlasmaCannon => "PLASMA CANNON",
             PowerupType.WeaponScattergun => "SCATTERGUN",
+            PowerupType.WeaponSniperRifle => "SNIPER RIFLE",
             PowerupType.ShieldBoost => "SHIELD +50",
             PowerupType.SpeedBoost => "SUPER SPEED",
             PowerupType.RapidFire => "OVERCHARGE",
@@ -45,10 +49,26 @@ namespace RushArena.Multiplayer
             PowerupType.WeaponAssaultRifle => new Color(1f, 0.8f, 0.2f),
             PowerupType.WeaponPlasmaCannon => new Color(0.2f, 0.85f, 1f),
             PowerupType.WeaponScattergun => new Color(1f, 0.45f, 0.15f),
+            PowerupType.WeaponSniperRifle => new Color(0.35f, 1f, 0.5f),
             PowerupType.ShieldBoost => new Color(0.25f, 0.75f, 1f),
             PowerupType.SpeedBoost => new Color(0.3f, 1f, 0.4f),
             PowerupType.RapidFire => new Color(1f, 0.3f, 0.9f),
             _ => Color.white
+        };
+
+        private static readonly Vector3[] ArenaSpawnWaypoints = new Vector3[]
+        {
+            new Vector3(0f, 4.2f, 0f),       // Center platform
+            new Vector3(14f, 0.8f, 0f),      // East lane
+            new Vector3(-14f, 0.8f, 0f),     // West lane
+            new Vector3(0f, 0.8f, 14f),      // North courtyard
+            new Vector3(0f, 0.8f, -14f),     // South courtyard
+            new Vector3(12f, 0.8f, 12f),     // NE sector
+            new Vector3(-12f, 0.8f, 12f),    // NW sector
+            new Vector3(12f, 0.8f, -12f),    // SE sector
+            new Vector3(-12f, 0.8f, -12f),   // SW sector
+            new Vector3(0f, 2.0f, 8f),       // North ramp
+            new Vector3(0f, 2.0f, -8f)       // South ramp
         };
 
         public static ArenaPowerup Create(Vector3 position, PowerupType type, Material material, Material accentMaterial = null)
@@ -80,56 +100,69 @@ namespace RushArena.Multiplayer
             icon.transform.SetParent(root.transform, false);
             icon.transform.localPosition = Vector3.up * 0.45f;
 
-            // Vertical beacon beam
-            var beam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            beam.name = "BeaconBeam";
-            beam.transform.SetParent(icon.transform, false);
-            beam.transform.localPosition = new Vector3(0f, 1.8f, 0f);
-            beam.transform.localScale = new Vector3(0.08f, 1.8f, 0.08f);
-            SafeDestroy(beam.GetComponent<Collider>());
-            if (accentMaterial != null) beam.GetComponent<Renderer>().sharedMaterial = accentMaterial;
+            var powerup = root.AddComponent<ArenaPowerup>();
+            powerup.type = type;
+            powerup.iconRoot = icon.transform;
+            powerup.baseMaterial = material;
+            powerup.accentMat = accentMaterial ?? material;
 
-            // 3D Visuals per type
-            if (type == PowerupType.WeaponAssaultRifle)
+            powerup.BuildHoloVisuals(icon.transform, type);
+
+            return powerup;
+        }
+
+        private void BuildHoloVisuals(Transform parent, PowerupType pType)
+        {
+            // Clear existing visuals
+            for (int i = parent.childCount - 1; i >= 0; i--)
             {
-                ProceduralVisuals.BuildWeaponPickupModel(icon.transform, WeaponType.AssaultRifle, material, accentMaterial ?? material);
+                SafeDestroy(parent.GetChild(i).gameObject);
             }
-            else if (type == PowerupType.WeaponPlasmaCannon)
+
+            if (pType == PowerupType.WeaponAssaultRifle)
             {
-                ProceduralVisuals.BuildWeaponPickupModel(icon.transform, WeaponType.PlasmaCannon, material, accentMaterial ?? material);
+                ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.AssaultRifle, baseMaterial, accentMat);
             }
-            else if (type == PowerupType.WeaponScattergun)
+            else if (pType == PowerupType.WeaponPlasmaCannon)
             {
-                ProceduralVisuals.BuildWeaponPickupModel(icon.transform, WeaponType.Scattergun, material, accentMaterial ?? material);
+                ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.PlasmaCannon, baseMaterial, accentMat);
             }
-            else if (type == PowerupType.ShieldBoost)
+            else if (pType == PowerupType.WeaponScattergun)
+            {
+                ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.Scattergun, baseMaterial, accentMat);
+            }
+            else if (pType == PowerupType.WeaponSniperRifle)
+            {
+                ProceduralVisuals.BuildWeaponPickupModel(parent, WeaponType.SniperRifle, baseMaterial, accentMat);
+            }
+            else if (pType == PowerupType.ShieldBoost)
             {
                 var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                disc.transform.SetParent(icon.transform, false);
+                disc.transform.SetParent(parent, false);
                 disc.transform.localScale = new Vector3(0.65f, 0.08f, 0.65f);
                 disc.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 SafeDestroy(disc.GetComponent<Collider>());
-                if (material != null) disc.GetComponent<Renderer>().sharedMaterial = material;
+                if (baseMaterial != null) disc.GetComponent<Renderer>().sharedMaterial = baseMaterial;
 
                 var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                ring.transform.SetParent(icon.transform, false);
+                ring.transform.SetParent(parent, false);
                 ring.transform.localScale = new Vector3(0.85f, 0.03f, 0.85f);
                 ring.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
                 SafeDestroy(ring.GetComponent<Collider>());
-                if (accentMaterial != null) ring.GetComponent<Renderer>().sharedMaterial = accentMaterial;
+                if (accentMat != null) ring.GetComponent<Renderer>().sharedMaterial = accentMat;
             }
-            else if (type == PowerupType.SpeedBoost)
+            else if (pType == PowerupType.SpeedBoost)
             {
                 for (int i = 0; i < 3; i++)
                 {
                     var chev = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    chev.transform.SetParent(icon.transform, false);
+                    chev.transform.SetParent(parent, false);
                     chev.transform.localPosition = new Vector3(0f, (i - 1f) * 0.22f, 0f);
                     chev.transform.localScale = new Vector3(0.6f, 0.12f, 0.14f);
                     chev.transform.localRotation = Quaternion.Euler(0f, 0f, 25f * (i - 1f));
                     SafeDestroy(chev.GetComponent<Collider>());
-                    if (accentMaterial != null) chev.GetComponent<Renderer>().sharedMaterial = accentMaterial;
-                    else if (material != null) chev.GetComponent<Renderer>().sharedMaterial = material;
+                    if (accentMat != null) chev.GetComponent<Renderer>().sharedMaterial = accentMat;
+                    else if (baseMaterial != null) chev.GetComponent<Renderer>().sharedMaterial = baseMaterial;
                 }
             }
             else // RapidFire
@@ -137,20 +170,14 @@ namespace RushArena.Multiplayer
                 for (int i = -1; i <= 1; i++)
                 {
                     var bolt = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    bolt.transform.SetParent(icon.transform, false);
+                    bolt.transform.SetParent(parent, false);
                     bolt.transform.localPosition = new Vector3(i * 0.22f, 0f, 0f);
                     bolt.transform.localScale = new Vector3(0.12f, 0.55f, 0.12f);
                     SafeDestroy(bolt.GetComponent<Collider>());
-                    if (accentMaterial != null) bolt.GetComponent<Renderer>().sharedMaterial = accentMaterial;
-                    else if (material != null) bolt.GetComponent<Renderer>().sharedMaterial = material;
+                    if (accentMat != null) bolt.GetComponent<Renderer>().sharedMaterial = accentMat;
+                    else if (baseMaterial != null) bolt.GetComponent<Renderer>().sharedMaterial = baseMaterial;
                 }
             }
-
-            var powerup = root.AddComponent<ArenaPowerup>();
-            powerup.type = type;
-            powerup.iconRoot = icon.transform;
-            powerup.visualRenderers = root.GetComponentsInChildren<Renderer>();
-            return powerup;
         }
 
         public static bool TryCollect(Vector3 playerPosition, out PowerupType collectedType)
@@ -160,13 +187,14 @@ namespace RushArena.Multiplayer
                 var p = Active[i];
                 if (p != null && p.IsAvailable && (p.transform.position - playerPosition).sqrMagnitude <= 2.6f)
                 {
-                    p.availableAt = Time.time + p.respawnDuration;
+                    p.availableAt = Time.time + Mathf.Max(6f, p.respawnDuration + Random.Range(-2f, 4f));
                     p.SetVisualActive(false);
                     collectedType = p.Type;
 
                     if (collectedType == PowerupType.WeaponAssaultRifle ||
                         collectedType == PowerupType.WeaponPlasmaCannon ||
-                        collectedType == PowerupType.WeaponScattergun)
+                        collectedType == PowerupType.WeaponScattergun ||
+                        collectedType == PowerupType.WeaponSniperRifle)
                     {
                         ProceduralAudio.PlayWeaponPickup();
                     }
@@ -184,7 +212,6 @@ namespace RushArena.Multiplayer
         private void Awake()
         {
             if (iconRoot == null) iconRoot = transform.Find("HoloIcon");
-            if (visualRenderers == null || visualRenderers.Length == 0) visualRenderers = GetComponentsInChildren<Renderer>();
             Active.Add(this);
         }
 
@@ -202,9 +229,51 @@ namespace RushArena.Multiplayer
             }
 
             bool available = IsAvailable;
-            if (iconRoot != null && iconRoot.gameObject.activeSelf != available)
+            if (iconRoot != null)
             {
-                SetVisualActive(available);
+                if (!iconRoot.gameObject.activeSelf && available)
+                {
+                    // Relocate to a random tactical waypoint on respawn
+                    RelocateToRandomWaypoint();
+                    SetVisualActive(true);
+                }
+                else if (iconRoot.gameObject.activeSelf && !available)
+                {
+                    SetVisualActive(false);
+                }
+            }
+        }
+
+        private void RelocateToRandomWaypoint()
+        {
+            // Pick a random location that doesn't have an available powerup within 4 meters
+            int startIdx = Random.Range(0, ArenaSpawnWaypoints.Length);
+            for (int i = 0; i < ArenaSpawnWaypoints.Length; i++)
+            {
+                Vector3 candidate = ArenaSpawnWaypoints[(startIdx + i) % ArenaSpawnWaypoints.Length];
+                bool occupied = false;
+                for (int j = 0; j < Active.Count; j++)
+                {
+                    var other = Active[j];
+                    if (other != null && other != this && other.IsAvailable && Vector3.Distance(other.transform.position, candidate) < 3.5f)
+                    {
+                        occupied = true;
+                        break;
+                    }
+                }
+
+                if (!occupied)
+                {
+                    transform.position = candidate;
+                    break;
+                }
+            }
+
+            // Randomize powerup type dynamically upon respawn
+            type = (PowerupType)Random.Range(0, 7);
+            if (iconRoot != null)
+            {
+                BuildHoloVisuals(iconRoot, type);
             }
         }
 
